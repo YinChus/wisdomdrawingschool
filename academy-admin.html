@@ -1,0 +1,705 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>智绘书院 — 管理端</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--brand:#6366f1;--brand2:#8b5cf6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--blue:#3b82f6;--bg:#f8fafc;--card:#ffffff;--border:#e2e8f0;--text:#1e293b;--muted:#64748b;--radius:8px;--sidebar:#1e1b4b}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.header{background:linear-gradient(135deg,#6366f1,#4338ca);color:#fff;padding:0 20px;height:52px;min-height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.header h1{font-size:17px;font-weight:700;margin-right:auto}
+.header .role-badge{background:rgba(255,255,255,.2);padding:3px 10px;border-radius:12px;font-size:12px}
+.header a,.header button.link{color:rgba(255,255,255,.85);font-size:12px;text-decoration:none;background:none;border:none;cursor:pointer}
+.header a:hover,.header button.link:hover{color:#fff}
+/* 侧边栏布局 */
+.layout{display:flex;flex:1;overflow:hidden}
+.sidebar{width:200px;min-width:200px;background:var(--sidebar);display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-title{color:#a5b4fc;font-size:11px;letter-spacing:.08em;padding:16px 16px 6px;font-weight:600;text-transform:uppercase}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;color:#c7d2fe;font-size:13px;transition:.15s;border-left:3px solid transparent}
+.sidebar-item:hover{background:#312e81;color:#e0e7ff}
+.sidebar-item.active{background:#312e81;color:#fff;border-left-color:#818cf8}
+.sidebar-item .icon{font-size:16px;width:20px;text-align:center}
+.sidebar-bottom{margin-top:auto;padding:12px;border-top:1px solid #312e81;display:flex;flex-direction:column;gap:6px}
+.sidebar-bottom a,.sidebar-bottom button{display:block;width:100%;text-align:center;padding:8px;border-radius:6px;font-size:12px;color:#a5b4fc;text-decoration:none;background:none;border:1px solid #312e81;cursor:pointer;transition:.15s}
+.sidebar-bottom a:hover,.sidebar-bottom button:hover{background:#312e81;color:#e0e7ff}
+/* 内容区 */
+.content{flex:1;overflow-y:auto;background:var(--bg)}
+.page{display:none;padding:28px 32px}
+.page.active{display:block}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:6px;font-size:13px;font-weight:500;border:1px solid var(--border);background:var(--card);cursor:pointer;transition:all .13s;white-space:nowrap}
+.btn:hover{background:#f1f5f9}
+.btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}.btn.primary:hover{background:#4f46e5}
+.btn.success{background:var(--green);color:#fff;border-color:var(--green)}
+.btn.danger{background:var(--red);color:#fff;border-color:var(--red)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.card h3{font-size:15px;font-weight:600;margin-bottom:14px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;color:var(--muted);padding:8px 12px;border-bottom:2px solid var(--border);font-weight:600}
+td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.role-badge2{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px}
+.role-admin{background:#fee2e2;color:#dc2626}
+.role-teacher{background:#ede9fe;color:#6d28d9}
+.role-student{background:#dcfce7;color:#16a34a}
+.tag-pub{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;background:#dcfce7;color:#16a34a}
+.tag-draft{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;background:#f1f5f9;color:var(--muted)}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.form-row input,.form-row select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;outline:none}
+.form-row input:focus{border-color:var(--brand)}
+.modal-bg{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45);align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border-radius:var(--radius);padding:24px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h2{font-size:16px;margin-bottom:16px}
+.loading{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:20px 0}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:9px 18px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+#toast.show{opacity:1}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🛡 智绘书院 — 管理后台</h1>
+  <span class="role-badge">🔑 管理员</span>
+  <span id="hd-name" style="font-size:12px;opacity:.8"></span>
+</div>
+<div class="layout">
+
+<!-- 侧边栏 -->
+<aside class="sidebar">
+  <div class="sidebar-title">功能导航</div>
+  <div class="sidebar-item active" onclick="showPage('users')" id="nav-users">
+    <span class="icon">👥</span>用户管理
+  </div>
+  <div class="sidebar-item" onclick="showPage('exams')" id="nav-exams">
+    <span class="icon">📄</span>试卷管理
+  </div>
+  <div class="sidebar-item" onclick="showPage('tracing')" id="nav-tracing">
+    <span class="icon">🔬</span>AI 追踪监控
+  </div>
+  <div class="sidebar-item" onclick="showPage('settings')" id="nav-settings">
+    <span class="icon">⚙️</span>LLM 模型配置
+  </div>
+  <div class="sidebar-bottom">
+    <a href="/academy.html">🏫 教师端</a>
+    <a href="/">返回标注系统</a>
+    <button onclick="location.href='/academy-login.html'">退出登录</button>
+  </div>
+</aside>
+
+<!-- 内容区 -->
+<main class="content">
+
+<!-- Users page -->
+<div class="page active" id="page-users">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <h2 style="font-size:17px">用户管理</h2>
+    <button class="btn primary" onclick="openAddUser()">＋ 新增用户</button>
+  </div>
+  <div class="card">
+    <div id="users-loading" class="loading"><div class="spinner"></div><span>加载中…</span></div>
+    <table id="users-table" style="display:none">
+      <thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>操作</th></tr></thead>
+      <tbody id="users-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Exams page -->
+<div class="page" id="page-exams">
+  <h2 style="font-size:17px;margin-bottom:16px">试卷管理</h2>
+  <div class="card">
+    <div id="exams-loading" class="loading"><div class="spinner"></div><span>加载中…</span></div>
+    <table id="exams-table" style="display:none">
+      <thead><tr><th>标题</th><th>学科</th><th>题数</th><th>状态</th><th>创建时间</th></tr></thead>
+      <tbody id="exams-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- AI追踪 page -->
+<div class="page" id="page-tracing">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <h2 style="font-size:17px">AI 追踪监控</h2>
+    <button class="btn" onclick="loadTracing()">🔄 刷新</button>
+  </div>
+
+  <!-- 架构说明卡 -->
+  <div class="card" style="margin-bottom:16px">
+    <h3 style="margin-bottom:10px">📐 AI 组件架构说明</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div style="background:#ede9fe;border-radius:8px;padding:14px">
+        <div style="font-weight:700;color:#6d28d9;margin-bottom:6px">🔗 LangGraph</div>
+        <div style="font-size:12px;color:#374151;line-height:1.6">
+          用于五阶段试卷分析流水线：<br>
+          <code style="background:#fff;padding:1px 4px;border-radius:3px">parse</code> →
+          <code style="background:#fff;padding:1px 4px;border-radius:3px">classify</code> →
+          <code style="background:#fff;padding:1px 4px;border-radius:3px">solve</code> →
+          <code style="background:#fff;padding:1px 4px;border-radius:3px">visualize</code> →
+          <code style="background:#fff;padding:1px 4px;border-radius:3px">validate</code><br><br>
+          入口：教师端「🤖 全自动分析」按钮 →<br>
+          <code style="background:#fff;padding:1px 4px;border-radius:3px">POST /api/academy/exams/{id}/run-agents</code>
+        </div>
+      </div>
+      <div style="background:#dbeafe;border-radius:8px;padding:14px">
+        <div style="font-weight:700;color:#1d4ed8;margin-bottom:6px">🔭 LangSmith</div>
+        <div style="font-size:12px;color:#374151;line-height:1.6">
+          自动追踪所有 LangGraph/LangChain 调用。<br>
+          无需改代码，只需在 <code style="background:#fff;padding:1px 4px;border-radius:3px">.env.local</code> 中设置：<br><br>
+          <code style="background:#fff;padding:1px 4px;border-radius:3px;display:block;margin:2px 0">LANGCHAIN_TRACING_V2=true</code>
+          <code style="background:#fff;padding:1px 4px;border-radius:3px;display:block;margin:2px 0">LANGCHAIN_API_KEY=ls_...</code>
+          <code style="background:#fff;padding:1px 4px;border-radius:3px;display:block;margin:2px 0">LANGCHAIN_PROJECT=exam-parse</code>
+        </div>
+      </div>
+      <div style="background:#d1fae5;border-radius:8px;padding:14px">
+        <div style="font-weight:700;color:#065f46;margin-bottom:6px">🔧 MCP 工具注册表</div>
+        <div style="font-size:12px;color:#374151;line-height:1.6">
+          内置 MCP 协议工具（academy_agents.py）：<br><br>
+          <code style="background:#fff;padding:1px 4px;border-radius:3px;display:block;margin:2px 0">calculate</code>
+          <code style="background:#fff;padding:1px 4px;border-radius:3px;display:block;margin:2px 0">classify_math</code>
+          <code style="background:#fff;padding:1px 4px;border-radius:3px;display:block;margin:2px 0">get_style</code>
+          <code style="background:#fff;padding:1px 4px;border-radius:3px;display:block;margin:2px 0">generate_geogebra_prompt</code>
+          在 classify / visualize 节点中被调用。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LangSmith 状态卡 -->
+  <div class="card" id="tracing-status-card">
+    <h3>📊 LangSmith 运行统计</h3>
+    <div id="tracing-body" class="loading"><div class="spinner"></div><span>加载中…</span></div>
+  </div>
+
+  <!-- 反馈概览 -->
+  <div class="card">
+    <h3 style="margin-bottom:12px">💬 全局学生反馈概览</h3>
+    <div id="feedback-overview-body"><div class="loading"><div class="spinner"></div><span>加载中…</span></div></div>
+  </div>
+</div>
+
+<!-- Settings page -->
+<div class="page" id="page-settings">
+  <h2 style="font-size:17px;margin-bottom:4px">AI 模型配置</h2>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:20px">支持所有 OpenAI 接口兼容的第三方服务商（DeepSeek、智谱、通义、Kimi 等）</p>
+
+  <div style="display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start">
+    <!-- 快捷服务商选择 -->
+    <div class="card" style="margin:0">
+      <h3 style="margin-bottom:12px">🚀 快捷选择服务商</h3>
+      <div style="display:flex;flex-direction:column;gap:8px" id="vendor-list">
+        <!-- 由 JS 生成 -->
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">
+        点击快捷填入 URL 与推荐模型，<br>仍需手动填写 API Key
+      </div>
+    </div>
+
+    <!-- 配置表单 -->
+    <div class="card" style="margin:0">
+      <h3 style="margin-bottom:16px">⚙️ 接口参数</h3>
+
+      <div class="form-row">
+        <label>API Key <span style="color:#ef4444">*</span></label>
+        <div style="position:relative">
+          <input type="password" id="cfg-key" placeholder="sk-xxxx 或服务商 API Token" style="padding-right:70px">
+          <button onclick="toggleKeyVis()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;font-size:11px;color:var(--muted)" id="key-vis-btn">显示</button>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>API Base URL <span style="color:#ef4444">*</span>
+          <span style="font-weight:400;color:var(--muted)">（不含 /chat/completions）</span>
+        </label>
+        <input type="text" id="cfg-url" placeholder="https://api.deepseek.com/v1">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-row" style="margin:0">
+          <label>文字模型 <span style="color:#ef4444">*</span>
+            <span style="font-weight:400;color:var(--muted)">（解析/解题/对话）</span>
+          </label>
+          <input type="text" id="cfg-text" placeholder="deepseek-chat">
+        </div>
+        <div class="form-row" style="margin:0">
+          <label>视觉模型
+            <span style="font-weight:400;color:var(--muted)">（图片解析，可留空则用文字模型）</span>
+          </label>
+          <input type="text" id="cfg-vision" placeholder="gpt-4o / deepseek-vision">
+        </div>
+        <div class="form-row" style="margin:0">
+          <label>几何代码模型
+            <span style="font-weight:400;color:var(--muted)">（GeoGebra/TikZ 生成；留空则用文字模型；建议接你微调后的模型）</span>
+          </label>
+          <input type="text" id="cfg-geo" placeholder="留空 / your-finetuned-geo-model">
+        </div>
+      </div>
+
+      <!-- 状态行 -->
+      <div style="display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <button class="btn" onclick="testConn()" id="test-btn">🔌 测试连接</button>
+        <div id="conn-st" style="font-size:12px;color:var(--muted);flex:1">未测试</div>
+        <button class="btn primary" onclick="saveSettings()">💾 保存配置</button>
+      </div>
+
+      <!-- 帮助提示 -->
+      <div style="margin-top:14px;background:#f8fafc;border-radius:6px;padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.7">
+        💡 <b>注意</b>：本系统调用 <code>POST {base_url}/chat/completions</code>，
+        只要服务商接口兼容 OpenAI Chat Completions 格式即可。<br>
+        图片解析时会调用视觉模型，若留空则使用文字模型（需服务商支持多模态）。
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div><!-- /.layout -->
+
+<!-- Add User Modal -->
+<div class="modal-bg" id="add-user-modal">
+  <div class="modal">
+    <h2>新增用户</h2>
+    <div class="form-row"><label>用户名 *</label><input type="text" id="nu-username" placeholder="login_name"></div>
+    <div class="form-row"><label>姓名 *</label><input type="text" id="nu-name" placeholder="显示名称"></div>
+    <div class="form-row"><label>密码 *</label><input type="password" id="nu-password" placeholder="至少6位"></div>
+    <div class="form-row"><label>角色 *</label>
+      <select id="nu-role">
+        <option value="student">学生</option>
+        <option value="teacher">教师</option>
+        <option value="admin">管理员</option>
+      </select>
+    </div>
+    <div id="add-user-err" style="display:none;color:#ef4444;font-size:12px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeAddUser()">取消</button>
+      <button class="btn primary" onclick="addUser()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-bg" id="pwd-modal">
+  <div class="modal">
+    <h2>修改密码</h2>
+    <input type="hidden" id="pwd-uid">
+    <div class="form-row"><label>用户名</label><input type="text" id="pwd-username" readonly style="background:#f8fafc"></div>
+    <div class="form-row"><label>新密码 *</label><input type="password" id="pwd-new" placeholder="至少6位"></div>
+    <div id="pwd-err" style="display:none;color:#ef4444;font-size:12px;margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closePwd()">取消</button>
+      <button class="btn primary" onclick="changePwd()">确认修改</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = '';
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const user = getUser();
+  if (!user || user.role !== 'admin') { location.href = '/academy-login.html'; return; }
+  document.getElementById('hd-name').textContent = user.name;
+  await loadUsers();
+  await loadSettings();
+});
+
+function getUser() { try { return JSON.parse(sessionStorage.getItem('academy_user') || ''); } catch { return null; } }
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const navEl = document.getElementById('nav-' + name);
+  if (navEl) navEl.classList.add('active');
+  if (name === 'exams') loadExams();
+  if (name === 'tracing') loadTracing();
+}
+
+/* ── AI Tracing ── */
+async function loadTracing() {
+  // LangSmith stats
+  const tb = document.getElementById('tracing-body');
+  tb.innerHTML = '<div class="loading"><div class="spinner"></div><span>查询 LangSmith…</span></div>';
+  try {
+    const r = await fetch('/api/academy/admin/langsmith-stats');
+    const d = await r.json();
+    if (!d.enabled) {
+      tb.innerHTML = `<div style="padding:12px;background:#fef3c7;border-radius:8px;font-size:13px">
+        ⚠️ ${esc(d.message||'LangSmith 未启用')}<br>
+        <span style="color:var(--muted);font-size:12px">当前项目：<code>${esc(d.project||'—')}</code></span>
+      </div>`;
+    } else if (d.error) {
+      tb.innerHTML = `<div style="color:#ef4444;font-size:13px">❌ API 错误：${esc(d.error)}</div>`;
+    } else {
+      const pct = d.success_rate ?? 0;
+      const pctColor = pct >= 90 ? '#22c55e' : pct >= 70 ? '#f59e0b' : '#ef4444';
+      tb.innerHTML = `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+          <div class="card" style="flex:1;min-width:100px;text-align:center;padding:12px;margin:0">
+            <div style="font-size:24px;font-weight:700;color:var(--brand)">${d.total_runs}</div>
+            <div style="font-size:11px;color:var(--muted)">总运行次数</div>
+          </div>
+          <div class="card" style="flex:1;min-width:100px;text-align:center;padding:12px;margin:0">
+            <div style="font-size:24px;font-weight:700;color:${pctColor}">${pct}%</div>
+            <div style="font-size:11px;color:var(--muted)">成功率</div>
+          </div>
+          <div class="card" style="flex:1;min-width:100px;text-align:center;padding:12px;margin:0">
+            <div style="font-size:24px;font-weight:700;color:#ef4444">${d.error_runs}</div>
+            <div style="font-size:11px;color:var(--muted)">失败次数</div>
+          </div>
+          <div class="card" style="flex:1;min-width:100px;text-align:center;padding:12px;margin:0">
+            <div style="font-size:24px;font-weight:700;color:#0ea5e9">${(d.total_tokens||0).toLocaleString()}</div>
+            <div style="font-size:11px;color:var(--muted)">总 Tokens</div>
+          </div>
+          <div class="card" style="flex:1;min-width:100px;text-align:center;padding:12px;margin:0">
+            <div style="font-size:24px;font-weight:700;color:#8b5cf6">${d.avg_latency_sec}s</div>
+            <div style="font-size:11px;color:var(--muted)">平均延迟</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600">最近 10 次运行</span>
+          <a href="${esc(d.dashboard_url)}" target="_blank" class="btn sm" style="font-size:11px">🌐 打开 LangSmith 面板 ↗</a>
+        </div>
+        <table style="width:100%">
+          <thead><tr><th>名称</th><th>状态</th><th>Tokens</th><th>时间</th></tr></thead>
+          <tbody>
+            ${(d.recent_runs||[]).map(run => `<tr>
+              <td style="font-size:12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(run.name||'—')}</td>
+              <td><span style="font-size:11px;padding:2px 7px;border-radius:10px;background:${run.status==='success'?'#dcfce7':'#fee2e2'};color:${run.status==='success'?'#16a34a':'#dc2626'}">${esc(run.status||'—')}</span></td>
+              <td style="font-size:12px">${(run.total_tokens||0).toLocaleString()}</td>
+              <td style="font-size:11px;color:var(--muted)">${run.start_time?new Date(run.start_time).toLocaleString('zh-CN'):''}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+  } catch(e) {
+    tb.innerHTML = `<span style="color:#ef4444;font-size:13px">请求失败：${esc(e.message)}</span>`;
+  }
+
+  // 全局反馈概览
+  const fb = document.getElementById('feedback-overview-body');
+  try {
+    const r2 = await fetch('/api/academy/admin/feedback-overview?limit=50');
+    const d2 = await r2.json();
+    const typeMap = {dont_understand:'🤔 不理解', too_hard:'😰 太难了', has_error:'⚠️ 有错误', suggestion:'💡 有建议'};
+    const colorMap = {dont_understand:'#dbeafe', too_hard:'#fee2e2', has_error:'#fef3c7', suggestion:'#d1fae5'};
+    const tc = d2.type_count || {};
+    fb.innerHTML = `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <div style="background:#f1f5f9;border-radius:8px;padding:10px 18px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:var(--brand)">${d2.total||0}</div>
+          <div style="font-size:11px;color:var(--muted)">总反馈</div>
+        </div>
+        <div style="background:#fee2e2;border-radius:8px;padding:10px 18px;text-align:center">
+          <div style="font-size:20px;font-weight:700;color:#dc2626">${d2.unresolved||0}</div>
+          <div style="font-size:11px;color:var(--muted)">待处理</div>
+        </div>
+        ${Object.entries(tc).map(([k,v])=>`
+          <div style="background:${colorMap[k]||'#f1f5f9'};border-radius:8px;padding:10px 18px;text-align:center">
+            <div style="font-size:20px;font-weight:700">${v}</div>
+            <div style="font-size:11px;color:var(--muted)">${typeMap[k]||k}</div>
+          </div>`).join('')}
+      </div>
+      <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+        <colgroup>
+          <col style="width:18%"><col style="width:34%"><col style="width:10%"><col style="width:28%"><col style="width:10%">
+        </colgroup>
+        <thead>
+          <tr style="background:#f8fafc;text-align:left">
+            <th style="padding:8px;font-size:12px;color:#475569">试卷</th>
+            <th style="padding:8px;font-size:12px;color:#475569">题目</th>
+            <th style="padding:8px;font-size:12px;color:#475569">类型</th>
+            <th style="padding:8px;font-size:12px;color:#475569">学生留言</th>
+            <th style="padding:8px;font-size:12px;color:#475569">状态</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(d2.items||[]).slice(0,20).map(f=>{
+            const qNum = f.question_number != null ? `第 ${f.question_number} 题` : (f.question_id ? '题目' : '整卷反馈');
+            const qPrev = f.question_preview ? `<div style="font-size:11px;color:#64748b;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.question_preview)}</div>` : '';
+            return `<tr style="border-top:1px solid #e2e8f0">
+              <td style="padding:8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.exam_title||'—')}</td>
+              <td style="padding:8px;font-size:12px;overflow:hidden">
+                <div style="font-weight:600;color:#334155">${qNum}</div>
+                ${qPrev}
+              </td>
+              <td style="padding:8px"><span style="font-size:11px;padding:2px 8px;border-radius:8px;background:${colorMap[f.feedback_type]||'#f1f5f9'};white-space:nowrap">${typeMap[f.feedback_type]||f.feedback_type}</span></td>
+              <td style="padding:8px;font-size:12px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.content||'—')}</td>
+              <td style="padding:8px"><span style="font-size:11px;color:${f.resolved?'#16a34a':'#dc2626'};white-space:nowrap">${f.resolved?'✓ 已处理':'● 待处理'}</span></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      ${(d2.total||0)>20?`<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">仅显示最近 20 条，共 ${d2.total} 条</div>`:''}`;
+  } catch(e) {
+    fb.innerHTML = `<span style="color:#ef4444;font-size:13px">反馈加载失败：${esc(e.message)}</span>`;
+  }
+}
+
+/* ── Users ── */
+async function loadUsers() {
+  document.getElementById('users-loading').style.display = 'flex';
+  document.getElementById('users-table').style.display = 'none';
+  try {
+    const r = await fetch(`${API}/api/academy/users`);
+    const d = await r.json();
+    const users = d.users || [];
+    const tb = document.getElementById('users-body');
+    const roleMap = {admin:'管理员',teacher:'教师',student:'学生'};
+    const roleCls = {admin:'role-admin',teacher:'role-teacher',student:'role-student'};
+    tb.innerHTML = users.map(u => `
+      <tr>
+        <td>${esc(u.username)}</td>
+        <td>${esc(u.name)}</td>
+        <td><span class="role-badge2 ${roleCls[u.role]||''}">${roleMap[u.role]||u.role}</span></td>
+        <td>
+          <button class="btn sm" onclick="openPwd('${u.id}','${esc(u.username)}')">改密码</button>
+          <button class="btn sm danger" onclick="deleteUser('${u.id}','${esc(u.username)}')" style="margin-left:5px">删除</button>
+        </td>
+      </tr>`).join('');
+    document.getElementById('users-loading').style.display = 'none';
+    document.getElementById('users-table').style.display = 'table';
+  } catch(e) { document.getElementById('users-loading').innerHTML = `<span style="color:#ef4444">加载失败：${e.message}</span>`; }
+}
+
+function openAddUser() {
+  document.getElementById('nu-username').value = '';
+  document.getElementById('nu-name').value = '';
+  document.getElementById('nu-password').value = '';
+  document.getElementById('nu-role').value = 'student';
+  document.getElementById('add-user-err').style.display = 'none';
+  document.getElementById('add-user-modal').classList.add('open');
+}
+function closeAddUser() { document.getElementById('add-user-modal').classList.remove('open'); }
+
+async function addUser() {
+  const username = document.getElementById('nu-username').value.trim();
+  const name = document.getElementById('nu-name').value.trim();
+  const password = document.getElementById('nu-password').value.trim();
+  const role = document.getElementById('nu-role').value;
+  const errEl = document.getElementById('add-user-err');
+  if (!username || !name || !password) { errEl.textContent = '请填写所有必填项'; errEl.style.display = 'block'; return; }
+  if (password.length < 6) { errEl.textContent = '密码至少6位'; errEl.style.display = 'block'; return; }
+  try {
+    const r = await fetch(`${API}/api/academy/users`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username, name, password, role})
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>{}); throw new Error(e?.detail||r.statusText); }
+    closeAddUser(); toast('✅ 用户已创建'); await loadUsers();
+  } catch(e) { errEl.textContent = '❌ ' + e.message; errEl.style.display = 'block'; }
+}
+
+async function deleteUser(id, username) {
+  const self = getUser();
+  if (self?.id === id) { toast('⚠ 不能删除自己'); return; }
+  if (!confirm(`确认删除用户「${username}」？`)) return;
+  try {
+    const r = await fetch(`${API}/api/academy/users/${id}`, { method: 'DELETE' });
+    if (!r.ok) { const e = await r.json().catch(()=>{}); throw new Error(e?.detail||r.statusText); }
+    toast('已删除'); await loadUsers();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+function openPwd(id, username) {
+  document.getElementById('pwd-uid').value = id;
+  document.getElementById('pwd-username').value = username;
+  document.getElementById('pwd-new').value = '';
+  document.getElementById('pwd-err').style.display = 'none';
+  document.getElementById('pwd-modal').classList.add('open');
+}
+function closePwd() { document.getElementById('pwd-modal').classList.remove('open'); }
+
+async function changePwd() {
+  const id = document.getElementById('pwd-uid').value;
+  const pwd = document.getElementById('pwd-new').value.trim();
+  const errEl = document.getElementById('pwd-err');
+  if (pwd.length < 6) { errEl.textContent = '密码至少6位'; errEl.style.display = 'block'; return; }
+  try {
+    const r = await fetch(`${API}/api/academy/users/${id}/password`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({password: pwd})
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>{}); throw new Error(e?.detail||r.statusText); }
+    closePwd(); toast('✅ 密码已修改');
+  } catch(e) { errEl.textContent = '❌ ' + e.message; errEl.style.display = 'block'; }
+}
+
+document.getElementById('add-user-modal').addEventListener('click', function(e){ if(e.target===this) closeAddUser(); });
+document.getElementById('pwd-modal').addEventListener('click', function(e){ if(e.target===this) closePwd(); });
+
+/* ── Exams ── */
+async function loadExams() {
+  document.getElementById('exams-loading').style.display = 'flex';
+  document.getElementById('exams-table').style.display = 'none';
+  try {
+    const r = await fetch(`${API}/api/academy/exams`);
+    const d = await r.json();
+    const exams = d.exams || [];
+    const tb = document.getElementById('exams-body');
+    tb.innerHTML = exams.length ? exams.map(e => `
+      <tr>
+        <td>${esc(e.title)}</td>
+        <td>${esc(e.subject||'数学')}</td>
+        <td>${e.question_count||0}</td>
+        <td><span class="${e.published?'tag-pub':'tag-draft'}">${e.published?'已发布':'未发布'}</span></td>
+        <td>${fmtDate(e.created_at)}</td>
+      </tr>`).join('') : '<tr><td colspan="5" class="empty">暂无试卷</td></tr>';
+    document.getElementById('exams-loading').style.display = 'none';
+    document.getElementById('exams-table').style.display = 'table';
+  } catch(e) { document.getElementById('exams-loading').innerHTML = `<span style="color:#ef4444">加载失败：${e.message}</span>`; }
+}
+
+/* ── Settings ── */
+const VENDORS = [
+  {
+    name: 'DeepSeek', icon: '🌊', color: '#1e40af', bg: '#dbeafe',
+    url: 'https://api.deepseek.com/v1',
+    text: 'deepseek-chat', vision: 'deepseek-vision',
+    note: '国内高性价比，支持长文本'
+  },
+  {
+    name: '智谱 GLM', icon: '🧠', color: '#6d28d9', bg: '#ede9fe',
+    url: 'https://open.bigmodel.cn/api/paas/v4',
+    text: 'glm-4-flash', vision: 'glm-4v',
+    note: '国内厂商，支持多模态'
+  },
+  {
+    name: '阿里通义', icon: '☁️', color: '#0284c7', bg: '#e0f2fe',
+    url: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    text: 'qwen-turbo', vision: 'qwen-vl-plus',
+    note: '阿里云百炼，多模态强'
+  },
+  {
+    name: 'Moonshot Kimi', icon: '🌙', color: '#0f766e', bg: '#ccfbf1',
+    url: 'https://api.moonshot.cn/v1',
+    text: 'moonshot-v1-8k', vision: '',
+    note: '长文本处理优秀'
+  },
+  {
+    name: 'ChatAnywhere', icon: '🔀', color: '#7c3aed', bg: '#f5f3ff',
+    url: 'https://api.chatanywhere.tech/v1',
+    text: 'gpt-4o-mini', vision: 'gpt-4o',
+    note: '中转 OpenAI，国内可访问'
+  },
+  {
+    name: 'SiliconFlow', icon: '⚡', color: '#b45309', bg: '#fef3c7',
+    url: 'https://api.siliconflow.cn/v1',
+    text: 'deepseek-ai/DeepSeek-V3', vision: 'Qwen/Qwen2.5-VL-7B-Instruct',
+    note: '开源模型低价 API'
+  },
+  {
+    name: 'OpenAI 官方', icon: '🤖', color: '#374151', bg: '#f1f5f9',
+    url: 'https://api.openai.com/v1',
+    text: 'gpt-4o', vision: 'gpt-4o',
+    note: '需科学上网'
+  },
+];
+
+function renderVendors() {
+  const el = document.getElementById('vendor-list');
+  if (!el) return;
+  el.innerHTML = VENDORS.map((v, i) => `
+    <div onclick="applyVendor(${i})" style="
+      display:flex;align-items:center;gap:10px;padding:9px 12px;
+      border-radius:8px;cursor:pointer;border:1.5px solid ${v.bg};
+      background:${v.bg};transition:all .15s
+    " onmouseover="this.style.borderColor='${v.color}'" onmouseout="this.style.borderColor='${v.bg}'">
+      <span style="font-size:18px;line-height:1">${v.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:${v.color}">${v.name}</div>
+        <div style="font-size:11px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.note}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function applyVendor(idx) {
+  const v = VENDORS[idx];
+  document.getElementById('cfg-url').value   = v.url;
+  document.getElementById('cfg-text').value  = v.text;
+  document.getElementById('cfg-vision').value = v.vision;
+  toast(`✅ 已选择 ${v.name}，请填写 API Key 后保存`);
+}
+
+function toggleKeyVis() {
+  const inp = document.getElementById('cfg-key');
+  const btn = document.getElementById('key-vis-btn');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '隐藏'; }
+  else { inp.type = 'password'; btn.textContent = '显示'; }
+}
+
+async function loadSettings() {
+  renderVendors();
+  try {
+    const r = await fetch(`${API}/api/academy/settings`); const d = await r.json();
+    document.getElementById('cfg-url').value    = d.base_url    || '';
+    document.getElementById('cfg-text').value   = d.text_model  || '';
+    document.getElementById('cfg-vision').value = d.vision_model|| '';
+    const geoEl = document.getElementById('cfg-geo'); if (geoEl) geoEl.value = d.geo_model || '';
+  } catch {}
+}
+async function saveSettings() {
+  const cfg = {
+    api_key:    document.getElementById('cfg-key').value.trim(),
+    base_url:   document.getElementById('cfg-url').value.trim(),
+    text_model: document.getElementById('cfg-text').value.trim(),
+    vision_model: document.getElementById('cfg-vision').value.trim(),
+    geo_model: (document.getElementById('cfg-geo')?.value || '').trim(),
+  };
+  if (!cfg.api_key) delete cfg.api_key;
+  if (!cfg.base_url) { toast('⚠ 请填写 API Base URL'); return; }
+  if (!cfg.text_model) { toast('⚠ 请填写文字模型名称'); return; }
+  await fetch(`${API}/api/academy/settings`, {
+    method: 'PUT', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(cfg)
+  });
+  toast('✅ 已保存');
+}
+async function testConn() {
+  const btn = document.getElementById('test-btn');
+  const st  = document.getElementById('conn-st');
+  btn.disabled = true;
+  st.textContent = '连接中…'; st.style.color = 'var(--muted)';
+  try {
+    const cfg = {
+      api_key:    document.getElementById('cfg-key').value.trim(),
+      base_url:   document.getElementById('cfg-url').value.trim(),
+      text_model: document.getElementById('cfg-text').value.trim(),
+    };
+    if (cfg.api_key || cfg.base_url) {
+      await fetch(`${API}/api/academy/settings`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(cfg)
+      });
+    }
+    const r = await fetch(`${API}/api/academy/test-connection`, {method: 'POST'});
+    const d = await r.json();
+    if (d.ok) {
+      st.innerHTML = `<span style="color:#22c55e">✓ 连接成功</span> <span style="color:var(--muted)">· 模型：${esc(d.model||cfg.text_model)}</span>`;
+    } else {
+      st.innerHTML = `<span style="color:#ef4444">✗ ${esc(d.error||'连接失败')}</span>`;
+    }
+  } catch(e) {
+    st.innerHTML = `<span style="color:#ef4444">✗ ${esc(e.message)}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ── Utils ── */
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(iso){ if(!iso)return''; try{const d=new Date(iso);return d.toLocaleDateString('zh-CN');}catch{return iso;} }
+let _tt;
+function toast(msg){ const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),3000); }
+</script>
+</body>
+</html>

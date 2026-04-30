@@ -1,0 +1,4040 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>几何画板</title>
+<link rel="stylesheet" href="/static/jsxgraph.css">
+<script src="/static/jsxgraphcore.js"></script>
+<script src="/static/three.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --sb: #1e2a4a; --sb-hover: #2d3d6b; --sb-active: #3b82f6;
+  --bg: #f8fafc; --border: #e2e8f0; --text: #1e293b; --muted: #64748b;
+  --primary: #3b82f6; --danger: #ef4444; --success: #10b981;
+  --topbar-h: 44px; --sidebar-w: 174px; --props-w: 200px;
+}
+html, body { height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); }
+body { display: flex; flex-direction: column; }
+
+/* ── Top bar ── */
+.topbar {
+  min-height: var(--topbar-h); background: #fff; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 2px; padding: 0 10px; flex-shrink: 0; z-index: 20;
+  flex-wrap: wrap; row-gap: 0;
+}
+.topbar-title { font-weight: 700; font-size: 15px; color: var(--text); padding: 0 8px; }
+.sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+.tb { height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fff; cursor: pointer; font-size: 12px; color: var(--text);
+      display: flex; align-items: center; gap: 3px; transition: background .1s; white-space: nowrap; }
+.tb:hover { background: #f1f5f9; }
+.tb:disabled { opacity: .4; cursor: not-allowed; background: #fff; }
+.tb.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.tb.primary:hover { background: #2563eb; }
+.tb.success { background: var(--success); color: #fff; border-color: var(--success); }
+.tb.success:hover { background: #059669; }
+.tb.danger-btn { color: var(--danger); border-color: #fecaca; }
+.tb.danger-btn:hover { background: #fef2f2; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.question-box {
+  max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; color: var(--muted); background: #f8fafc; border: 1px solid var(--border);
+  border-radius: 5px; padding: 4px 8px; cursor: default;
+}
+
+/* ── Main layout ── */
+.layout { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Left sidebar ── */
+.sidebar {
+  width: var(--sidebar-w); background: var(--sb); display: flex; flex-direction: column;
+  overflow-y: auto; flex-shrink: 0; user-select: none;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 2px; }
+.tg-label {
+  font-size: 10px; font-weight: 600; color: rgba(255,255,255,.35);
+  text-transform: uppercase; letter-spacing: .07em; padding: 10px 12px 4px;
+}
+.t-btn {
+  width: 100%; display: flex; align-items: center; gap: 7px;
+  padding: 7px 12px; border: none; background: none;
+  color: rgba(255,255,255,.7); font-size: 12.5px; cursor: pointer;
+  transition: background .1s, color .1s; text-align: left;
+}
+.t-btn:hover { background: var(--sb-hover); color: #fff; }
+.t-btn.active { background: var(--sb-active); color: #fff; }
+.t-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+.t-key { margin-left: auto; font-size: 10px; opacity: .4; font-family: monospace;
+         background: rgba(255,255,255,.1); padding: 1px 4px; border-radius: 3px; }
+.sidebar-bottom {
+  margin-top: auto; border-top: 1px solid rgba(255,255,255,.1); padding: 8px;
+}
+.sidebar-bottom .tb { width: 100%; justify-content: center; font-size: 12px; }
+
+/* ── Canvas area ── */
+.canvas-col { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 280px; }
+.canvas-area { flex: 1; position: relative; overflow: hidden; }
+#jxgbox { position: absolute; top: 0; left: 0; right: 0; bottom: 24px; }
+.statusbar {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 24px;
+  background: rgba(255,255,255,.92); backdrop-filter: blur(4px);
+  border-top: 1px solid var(--border); font-size: 11.5px;
+  display: flex; align-items: center; padding: 0 12px; gap: 16px; color: var(--muted);
+}
+#status-hint { color: var(--primary); font-weight: 600; }
+#status-coords { font-family: monospace; font-size: 11px; }
+#status-count { font-size: 11px; }
+
+/* ── Properties panel ── */
+.props { width: var(--props-w); background: #fff; border-left: 1px solid var(--border);
+         display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.props-hd { padding: 10px 12px 7px; font-size: 11px; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
+.props-empty { flex: 1; display: flex; flex-direction: column; align-items: center;
+               justify-content: center; color: var(--muted); font-size: 12px; text-align: center; gap: 8px; }
+.props-empty-icon { font-size: 30px; opacity: .25; }
+.psec { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+.psec-title { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+              letter-spacing: .04em; margin-bottom: 7px; }
+.plabel { font-size: 11px; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
+.pinput { width: 100%; border: 1px solid var(--border); border-radius: 4px;
+          padding: 4px 7px; font-size: 12.5px; font-family: inherit; }
+.pinput:focus { outline: none; border-color: var(--primary); }
+.prow { margin-bottom: 6px; }
+.colors { display: flex; gap: 5px; flex-wrap: wrap; }
+.cswatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer;
+           border: 2px solid transparent; transition: transform .1s, border-color .1s; flex-shrink: 0; }
+.cswatch:hover { transform: scale(1.2); }
+.cswatch.active { border-color: #475569; }
+.prange { width: 100%; accent-color: var(--primary); }
+.pselect { width: 100%; border: 1px solid var(--border); border-radius: 4px;
+           padding: 4px 6px; font-size: 12.5px; }
+.pcheck { display: flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; margin: 3px 0; }
+.pcheck input { accent-color: var(--primary); width: 14px; height: 14px; }
+.pdel { width: 100%; padding: 6px; border-radius: 4px; font-size: 12.5px; cursor: pointer;
+        font-family: inherit; background: #fef2f2; color: var(--danger);
+        border: 1px solid #fecaca; margin-top: 6px; }
+.pdel:hover { background: #fee2e2; }
+
+/* ── AI Panel (right sidebar) ── */
+.ai-toggle { background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; border-color:#764ba2; font-weight:700; }
+.ai-toggle:hover { opacity:.85; }
+.ai-panel {
+  width: 0; overflow: hidden; transition: width .28s ease;
+  background: #fff; border-left: 2px solid #667eea;
+  box-shadow: -4px 0 16px rgba(0,0,0,.08);
+  display: flex; flex-direction: column; flex-shrink: 0; z-index: 18;
+}
+.ai-panel.open { width: 260px; min-width: 220px; max-width: 420px; }
+.ai-resize-handle { width:5px; background:transparent; cursor:col-resize; position:absolute; left:0; top:0; bottom:0; z-index:1; }
+.ai-resize-handle:hover { background:rgba(102,126,234,.25); }
+.ai-panel-hd {
+  display: flex; flex-direction: column; gap: 5px; padding: 8px 10px 6px;
+  background: #f5f3ff; border-bottom: 1px solid #e2e8f0; flex-shrink: 0;
+}
+.ai-panel-hd-top { display:flex; align-items:center; gap:5px; }
+.ai-panel-title { font-weight:700; font-size:13px; color:#1e293b; flex:1; }
+.ai-panel-tabs { display:flex; flex-wrap:wrap; gap:3px; }
+.ai-panel-body {
+  display:flex; flex-direction:column; gap:7px;
+  padding:8px 10px; flex:1; overflow-y:auto; min-height:0;
+}
+.ai-left  { flex:none; width:100%; display:flex; flex-direction:column; gap:5px; }
+.ai-right { width:100%; display:flex; flex-direction:column; gap:4px; }
+.ai-lbl { font-size:10.5px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.04em; }
+.ai-prompt {
+  flex:1; resize:none; border:1.5px solid #e2e8f0; border-radius:6px;
+  padding:6px 8px; font-size:13px; font-family:inherit; outline:none; min-height:60px;
+}
+.ai-prompt:focus { border-color:#667eea; }
+.ai-chips { display:flex; flex-wrap:wrap; gap:3px; }
+.ai-chip {
+  font-size:11px; padding:2px 7px; border:1px solid #e2e8f0; border-radius:99px;
+  cursor:pointer; color:#475569; background:#f8fafc; transition:all .1s; white-space:nowrap;
+}
+.ai-chip:hover { border-color:#667eea; color:#667eea; }
+.ai-settings { display:none; flex-direction:column; gap:4px; padding:6px 8px;
+               background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:4px; }
+.ai-settings.show { display:flex; }
+.ai-srow { display:flex; gap:5px; align-items:center; }
+.ai-slbl { font-size:10.5px; font-weight:600; color:#64748b; width:56px; flex-shrink:0; }
+.ai-sinput { flex:1; border:1px solid #e2e8f0; border-radius:4px; padding:3px 6px;
+             font-size:12px; font-family:inherit; outline:none; background:#fff; }
+.ai-sinput:focus { border-color:#667eea; }
+.ai-code {
+  flex:1; resize:none; border:1.5px solid #e2e8f0; border-radius:6px;
+  padding:6px 8px; font-size:11px; font-family:'Consolas','Fira Code',monospace;
+  background:#f8fafc; outline:none; color:#1e293b; min-height:60px;
+}
+.ai-code:focus { border-color:#667eea; }
+.ai-actions { display:flex; gap:5px; flex-shrink:0; }
+.ai-btn {
+  flex:1; padding:5px 6px; border-radius:5px; font-size:12px; font-weight:700;
+  cursor:pointer; border:none; font-family:inherit; transition:opacity .1s;
+}
+.ai-btn:hover { opacity:.85; }
+.ai-btn:disabled { opacity:.5; cursor:not-allowed; }
+.ai-btn-gen   { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; }
+.ai-btn-apply { background:#10b981; color:#fff; }
+.ai-btn-clr   { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+.ai-stat { font-size:11px; min-height:16px; }
+.ai-stat.ok      { color:#10b981; }
+.ai-stat.err     { color:#ef4444; }
+.ai-stat.loading { color:#667eea; }
+
+.ai-tab-btn { height:24px; padding:0 6px; border:1px solid rgba(102,126,234,.3); border-radius:4px;
+              background:transparent; color:#64748b; font-size:11px; cursor:pointer;
+              transition:all .15s; font-family:inherit; white-space:nowrap; }
+.ai-tab-btn:hover { background:#ede9fe; color:#764ba2; border-color:#c4b5fd; }
+.ai-tab-btn.active { background:#764ba2; color:#fff; font-weight:700; border-color:#764ba2; }
+.ai-tab-content { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.spinner { display:inline-block; width:11px; height:11px; border:2px solid rgba(102,126,234,.3);
+           border-top-color:#667eea; border-radius:50%; animation:spin .7s linear infinite;
+           vertical-align:middle; margin-right:4px; }
+
+/* ═══ 3D Overlay ═══ */
+#threejs-wrap { display:none; position:absolute; top:0; left:0; right:0; bottom:24px; background:#f8fafc; z-index:15; overflow:hidden; }
+#threejs-canvas { width:100%; height:100%; display:block; cursor:grab; }
+#threejs-canvas:active { cursor:grabbing; }
+.d3-bar { position:absolute; top:8px; left:8px; right:148px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; pointer-events:none; z-index:2; }
+.d3-bar > * { pointer-events:auto; }
+.d3-shapes-panel { position:absolute; right:8px; top:8px; width:132px; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.12); overflow-y:auto; max-height:300px; z-index:2; }
+.d3-shapes-hd { font-size:10.5px; font-weight:700; color:var(--muted); padding:6px 10px 4px; border-bottom:1px solid #f1f5f9; text-transform:uppercase; }
+.d3-shape-item { display:flex; align-items:center; gap:5px; padding:5px 8px; font-size:11.5px; cursor:pointer; border-bottom:1px solid #f1f5f9; transition:background .1s; }
+.d3-shape-item:last-child { border-bottom:none; }
+.d3-shape-item:hover, .d3-shape-item.sel { background:#eff6ff; }
+.d3-shape-del { margin-left:auto; color:#ef4444; font-size:13px; opacity:.6; }
+.d3-shape-del:hover { opacity:1; }
+.d3-dim-bar { display:none; position:absolute; bottom:32px; left:50%; transform:translateX(-50%); background:rgba(255,255,255,.97); border:1px solid var(--border); border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,.1); padding:6px 14px; font-size:12px; gap:8px; align-items:center; white-space:nowrap; z-index:3; }
+.d3-dim-bar.show { display:flex; }
+.d3-dim-input { width:52px; border:1px solid #e2e8f0; border-radius:3px; padding:2px 5px; font-size:11.5px; text-align:center; }
+
+/* ═══ Constraint / Measure Panel ═══ */
+#constraint-panel { display:none; position:absolute; top:8px; right:10px; width:220px; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.1); z-index:25; }
+.cp-hd { display:flex; align-items:center; padding:7px 10px; background:#f8fafc; border-bottom:1px solid var(--border); border-radius:8px 8px 0 0; gap:5px; }
+.cp-title { font-size:11.5px; font-weight:700; flex:1; }
+.cp-body { padding:7px 10px; max-height:240px; overflow-y:auto; }
+.cp-row { display:flex; align-items:center; gap:5px; margin-bottom:5px; font-size:12px; }
+.cp-badge { font-size:10.5px; background:#eff6ff; color:#3b82f6; border:1px solid #bfdbfe; border-radius:3px; padding:1px 5px; flex-shrink:0; white-space:nowrap; }
+.cp-val { font-family:monospace; background:#f8fafc; border:1px solid var(--border); border-radius:3px; padding:2px 6px; flex:1; min-width:0; font-size:11.5px; }
+.cp-del { background:none; border:none; cursor:pointer; color:#ef4444; font-size:14px; padding:0 2px; }
+.cp-empty { font-size:11.5px; color:var(--muted); text-align:center; padding:14px 0; }
+.cp-add-row { padding:7px 10px; border-top:1px solid var(--border); display:flex; gap:5px; }
+.cp-add-sel { flex:1; font-size:11.5px; border:1px solid var(--border); border-radius:4px; padding:3px 6px; background:#fff; }
+.measure-bar { position:absolute; bottom:32px; left:50%; transform:translateX(-50%); background:rgba(30,42,74,.88); color:#fff; font-size:12px; padding:4px 14px; border-radius:99px; pointer-events:none; white-space:nowrap; opacity:0; transition:opacity .2s; z-index:22; }
+.measure-bar.show { opacity:1; }
+
+/* ═══ Step Recorder Bar ═══ */
+.rec-bar { display:none; position:absolute; top:54px; left:50%; transform:translateX(-50%); background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:0 3px 12px rgba(0,0,0,.1); padding:5px 10px; z-index:24; align-items:center; gap:7px; white-space:nowrap; }
+.rec-bar.on { display:flex; }
+.rec-dot { width:9px; height:9px; border-radius:50%; background:#ef4444; flex-shrink:0; }
+.rec-dot.blink { animation:recblink 1s ease-in-out infinite; }
+@keyframes recblink { 0%,100%{opacity:1} 50%{opacity:.15} }
+
+/* ── 函数图像侧栏 ── */
+.fn-panel { padding: 4px 10px 8px; }
+.fn-input { width: 100%; box-sizing: border-box;
+  border: 1px solid rgba(255,255,255,.2); border-radius: 4px;
+  background: rgba(255,255,255,.08); color: #e2e8f0; padding: 4px 7px;
+  font-size: 12px; font-family: monospace; outline: none; margin-bottom: 5px; }
+.fn-input::placeholder { color: rgba(255,255,255,.3); font-family: sans-serif; }
+.fn-input:focus { border-color: rgba(255,255,255,.5); background: rgba(255,255,255,.12); }
+/* 覆盖 select 中的 option 使其可读 */
+.fn-input option { background: #1e2a4a; color: #e2e8f0; }
+/* select 元素本身加深背景以确保可读 */
+.fn-select { background: rgba(255,255,255,.15) !important; color: #fff !important; }
+.fn-chips { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 5px; }
+.fn-chip { font-size: 11px; padding: 2px 6px; border-radius: 3px;
+  background: rgba(255,255,255,.1); color: rgba(255,255,255,.75);
+  cursor: pointer; font-family: monospace; user-select: none; }
+.fn-chip:hover { background: rgba(255,255,255,.22); color: #fff; }
+.fn-draw-btn { width: 100%; padding: 5px; border-radius: 4px;
+  border: 1px solid rgba(255,255,255,.2); cursor: pointer; font-family: inherit;
+  background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; font-size: 12px; }
+.fn-draw-btn:hover { opacity: .85; }
+.fn-stat { font-size: 11px; color: rgba(255,255,255,.6); min-height: 14px; padding-top: 3px; }
+.fn-math-preview {
+  width: 100%; box-sizing: border-box;
+  background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.18);
+  border-radius: 6px; padding: 6px 10px; min-height: 34px;
+  font-family: 'STIX Two Math','Times New Roman',Georgia,serif;
+  font-size: 15px; color: #e2e8f0; line-height: 1.5;
+  margin-bottom: 5px; word-break: break-all; letter-spacing: .02em;
+  user-select: none; pointer-events: none;
+}
+.fn-math-preview sup { font-size: .72em; vertical-align: super; line-height: 0; }
+.fn-math-preview sub { font-size: .72em; vertical-align: sub; line-height: 0; }
+.fn-math-frac { display: inline-flex; flex-direction: column; align-items: center;
+  vertical-align: middle; margin: 0 2px; line-height: 1.1; }
+.fn-math-frac > span:first-child { border-bottom: 1.5px solid #e2e8f0; padding: 0 3px; font-size: .82em; }
+.fn-math-frac > span:last-child  { padding: 0 3px; font-size: .82em; }
+.fn-math-input { font-size: 13px !important; padding: 6px 9px !important; margin-bottom: 4px; }
+
+/* ── 上下文菜单 ── */
+#ctx-menu { display: none; position: fixed; z-index: 9999; background: #fff;
+  border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.18); min-width: 148px; padding: 4px 0; }
+#ctx-menu.show { display: block; }
+.ctx-item { display: flex; align-items: center; gap: 7px; padding: 6px 12px;
+  font-size: 12.5px; cursor: pointer; color: var(--text); user-select: none; }
+.ctx-item:hover { background: #f1f5f9; }
+.ctx-item.danger { color: var(--danger); }
+.ctx-sep { height: 1px; background: var(--border); margin: 3px 0; }
+
+/* ── 多选高亮 ── */
+.multi-sel-count { font-size: 11px; background: #eff6ff; color: #3b82f6;
+  border: 1px solid #bfdbfe; border-radius: 4px; padding: 1px 7px; }
+
+/* ── 绘图历史面板 ── */
+#history-panel { display:none; position:fixed; top:52px; right:12px; width:330px;
+  max-height:calc(100vh - 68px); background:#fff; border:1px solid var(--border);
+  border-radius:10px; box-shadow:0 8px 32px rgba(0,0,0,.18); z-index:300;
+  flex-direction:column; overflow:hidden; }
+#history-panel.open { display:flex; }
+.hist-hd { padding:10px 14px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.hist-hd-title { font-weight:700; font-size:13px; }
+#history-list { flex:1; overflow-y:auto; padding:8px 8px 4px; }
+.history-item { display:flex; align-items:center; gap:8px; padding:8px;
+  border:1px solid var(--border); border-radius:7px; margin-bottom:6px;
+  cursor:pointer; transition:background .12s; }
+.history-item:hover { background:#f8fafc; }
+.hist-thumb { width:66px; height:50px; flex-shrink:0; border:1px solid var(--border);
+  border-radius:5px; overflow:hidden; background:#f8fafc;
+  display:flex; align-items:center; justify-content:center; font-size:22px; }
+.hist-thumb img { width:100%; height:100%; object-fit:contain; }
+.hist-info { flex:1; min-width:0; }
+.hist-name { font-size:12px; font-weight:600; color:var(--text);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hist-date { font-size:10px; color:var(--muted); margin-top:2px; }
+.hist-steps { font-size:10px; color:var(--muted); }
+#drawing-name-tag { font-size:11px; color:var(--primary); font-weight:600;
+  max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  padding:2px 6px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; }
+</style>
+</head>
+<body>
+
+<!-- ── Top bar ── -->
+<div class="topbar">
+  <button class="tb" onclick="goBack()">← 返回标注</button>
+  <div class="sep"></div>
+  <span class="topbar-title">📐 几何画板</span>
+  <div id="question-display" style="display:none">
+    <div class="sep"></div>
+    <div class="question-box" id="q-text" title=""></div>
+  </div>
+  <div class="sep"></div>
+  <button class="tb" id="btn-undo" onclick="undo()" disabled title="撤销 Ctrl+Z">↩ 撤销</button>
+  <button class="tb" id="btn-redo" onclick="redo()" disabled title="重做 Ctrl+Y">↪ 重做</button>
+  <div class="sep"></div>
+  <button class="tb" onclick="zoomIn()" title="放大">🔍+</button>
+  <button class="tb" onclick="zoomOut()" title="缩小">🔍-</button>
+  <button class="tb" onclick="zoomReset()" title="重置视图">适应</button>
+  <div class="sep"></div>
+  <button class="tb" id="btn-axis" onclick="toggleAxis()">坐标轴 ✓</button>
+  <button class="tb" id="btn-grid" onclick="toggleGrid()">网格 ✓</button>
+  <div class="topbar-right">
+    <button class="tb ai-toggle" id="btn-ai" onclick="toggleAIPanel()">🤖 AI绘图</button>
+    <div class="sep"></div>
+    <div class="sep"></div>
+    <button class="tb" id="btn-3d" onclick="toggle3D()" title="切换 3D/2D 绘图模式">🎲 3D模式</button>
+    <button class="tb" id="btn-constraint" onclick="toggleConstraintPanel()" title="测量约束面板">⛓ 约束</button>
+    <button class="tb" id="btn-record" onclick="toggleRecord()" title="录制绘图步骤">📹 录制</button>
+    <div class="sep"></div>
+    <button class="tb" onclick="newDrawing()" title="新建绘图文件">📄 新建</button>
+    <button class="tb success" onclick="saveDrawing()" title="保存当前绘图到历史">💾 保存</button>
+    <button class="tb" id="btn-history" onclick="toggleHistoryPanel()" title="查看绘图历史">📂 历史</button>
+    <span id="drawing-name-tag" title="当前绘图"></span>
+    <div class="sep"></div>
+    <button class="tb danger-btn" onclick="clearAll()">清空</button>
+    <div class="sep"></div>
+    <button class="tb" onclick="exportSVG()">⬇ SVG</button>
+    <button class="tb success" onclick="exportPNG()">⬇ PNG</button>
+    <button class="tb primary" id="btn-upload" style="display:none" onclick="uploadToTriplet()">⬆ 上传到题目</button>
+  </div>
+</div>
+
+<!-- ── Main layout ── -->
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+
+    <div class="tg-label">基础</div>
+    <button class="t-btn active" data-tool="move" onclick="setTool('move')">
+      <span class="t-icon">↖</span>移动/选择<span class="t-key">V</span>
+    </button>
+    <button class="t-btn" data-tool="erase" onclick="setTool('erase')">
+      <span class="t-icon">✕</span>删除<span class="t-key">E</span>
+    </button>
+    <button class="t-btn" style="font-size:11px" onclick="selectAll()">
+      <span class="t-icon">⊞</span>全选<span class="t-key" style="font-size:9px">Ctrl+A</span>
+    </button>
+    <button class="t-btn" style="font-size:11px;color:#ef4444" onclick="delSelBatch()">
+      <span class="t-icon">🗑</span>删除选中
+    </button>
+
+    <div class="tg-label">点</div>
+    <button class="t-btn" data-tool="point" onclick="setTool('point')">
+      <span class="t-icon" style="font-size:18px;line-height:1">·</span>点<span class="t-key">P</span>
+    </button>
+    <button class="t-btn" data-tool="midpoint" onclick="setTool('midpoint')">
+      <span class="t-icon">⊙</span>中点<span class="t-key">M</span>
+    </button>
+    <button class="t-btn" data-tool="intersection" onclick="setTool('intersection')">
+      <span class="t-icon">✕</span>交点
+    </button>
+
+    <div class="tg-label">线段 / 直线</div>
+    <button class="t-btn" data-tool="segment" onclick="setTool('segment')">
+      <span class="t-icon">╱</span>线段<span class="t-key">S</span>
+    </button>
+    <button class="t-btn" data-tool="line" onclick="setTool('line')">
+      <span class="t-icon">↔</span>直线<span class="t-key">L</span>
+    </button>
+    <button class="t-btn" data-tool="ray" onclick="setTool('ray')">
+      <span class="t-icon">→</span>射线<span class="t-key">R</span>
+    </button>
+    <button class="t-btn" data-tool="perpendicular" onclick="setTool('perpendicular')">
+      <span class="t-icon">⊥</span>垂线
+    </button>
+    <button class="t-btn" data-tool="parallel" onclick="setTool('parallel')">
+      <span class="t-icon">∥</span>平行线
+    </button>
+    <button class="t-btn" data-tool="tangent" onclick="setTool('tangent')">
+      <span class="t-icon">⌒</span>切线
+    </button>
+
+    <div class="tg-label">圆 / 弧 / 锥曲线</div>
+    <button class="t-btn" data-tool="circle" onclick="setTool('circle')">
+      <span class="t-icon">○</span>圆(心+点)<span class="t-key">C</span>
+    </button>
+    <button class="t-btn" data-tool="arc" onclick="setTool('arc')">
+      <span class="t-icon">◠</span>弧(心+起+终)
+    </button>
+    <button class="t-btn" data-tool="circle3pt" onclick="setTool('circle3pt')">
+      <span class="t-icon">⊙</span>三点圆
+    </button>
+    <button class="t-btn" data-tool="ellipse" onclick="setTool('ellipse')">
+      <span class="t-icon">⬭</span>椭圆(焦+点)
+    </button>
+    <button class="t-btn" data-tool="parabola" onclick="setTool('parabola')">
+      <span class="t-icon">∪</span>抛物线
+    </button>
+    <button class="t-btn" data-tool="hyperbola" onclick="setTool('hyperbola')">
+      <span class="t-icon">⌒</span>双曲线
+    </button>
+
+    <div class="tg-label">多边形 / 快速图形</div>
+    <button class="t-btn" data-tool="polygon" onclick="setTool('polygon')">
+      <span class="t-icon">△</span>任意多边形<span class="t-key">G</span>
+    </button>
+    <button class="t-btn" data-tool="regpoly" onclick="setTool('regpoly')">
+      <span class="t-icon">⬡</span>正多边形
+    </button>
+    <button class="t-btn" data-tool="eq-triangle" onclick="quickShape('eq-triangle')">
+      <span class="t-icon">△</span>等边三角形
+    </button>
+    <button class="t-btn" data-tool="right-triangle" onclick="quickShape('right-triangle')">
+      <span class="t-icon">◺</span>直角三角形
+    </button>
+    <button class="t-btn" data-tool="square" onclick="quickShape('square')">
+      <span class="t-icon">□</span>正方形
+    </button>
+    <button class="t-btn" data-tool="rectangle" onclick="setTool('rectangle')">
+      <span class="t-icon">▭</span>矩形(两顶点)
+    </button>
+    <button class="t-btn" data-tool="rhombus" onclick="setTool('rhombus')">
+      <span class="t-icon">◇</span>菱形
+    </button>
+    <button class="t-btn" data-tool="trapezoid" onclick="setTool('trapezoid')">
+      <span class="t-icon">⌂</span>等腰梯形
+    </button>
+
+    <div class="tg-label">向量</div>
+    <button class="t-btn" data-tool="vector" onclick="setTool('vector')">
+      <span class="t-icon">⇒</span>向量箭头<span class="t-key">W</span>
+    </button>
+    <button class="t-btn" data-tool="vector-coord" onclick="setTool('vector-coord')">
+      <span class="t-icon">➡</span>坐标向量
+    </button>
+    <button class="t-btn" data-tool="unitvec-x" onclick="quickShape('unitvec-x')">
+      <span class="t-icon">→</span>单位向量 i
+    </button>
+    <button class="t-btn" data-tool="unitvec-y" onclick="quickShape('unitvec-y')">
+      <span class="t-icon">↑</span>单位向量 j
+    </button>
+
+    <div class="tg-label">标注</div>
+    <button class="t-btn" data-tool="angle" onclick="setTool('angle')">
+      <span class="t-icon">∠</span>角标记
+    </button>
+    <button class="t-btn" data-tool="rightangle" onclick="setTool('rightangle')">
+      <span class="t-icon">⌐</span>直角标记
+    </button>
+    <button class="t-btn" data-tool="text" onclick="setTool('text')">
+      <span class="t-icon">T</span>文字<span class="t-key">T</span>
+    </button>
+    <button class="t-btn" data-tool="bisector" onclick="setTool('bisector')">
+      <span class="t-icon">⦦</span>角平分线
+    </button>
+
+    <div class="tg-label">函数图像</div>
+    <div class="fn-panel">
+      <div class="fn-math-preview" id="fn-preview"><em style="opacity:.5;font-style:italic;font-family:sans-serif;font-size:13px">f(x) = …</em></div>
+      <input class="fn-input fn-math-input" id="fn-expr" placeholder="如 sin(x), x^2/2, 1/(x+1)"
+        oninput="updateFnPreview(this.value)" />
+      <div style="display:flex;gap:4px;margin-bottom:4px">
+        <select class="fn-input fn-select" id="fn-color-sel" style="flex:0 0 auto;width:70px;padding:2px 4px">
+          <option value="">颜色</option>
+          <option value="#3b82f6">蓝色</option>
+          <option value="#ef4444">红色</option>
+          <option value="#10b981">绿色</option>
+          <option value="#f59e0b">橙色</option>
+          <option value="#8b5cf6">紫色</option>
+          <option value="#1e293b">黑色</option>
+        </select>
+        <select class="fn-input fn-select" id="fn-range-sel" style="flex:1;padding:2px 4px">
+          <option value="-12,12">全范围</option>
+          <option value="0,10">x≥0</option>
+          <option value="-10,0">x≤0</option>
+          <option value="-3.14159,3.14159">[-π,π]</option>
+          <option value="-6.28318,6.28318">[-2π,2π]</option>
+          <option value="0.001,10">x&gt;0</option>
+        </select>
+      </div>
+      <div class="fn-chips">
+        <span class="fn-chip" onclick="setFnExpr('sin(x)')">sin</span>
+        <span class="fn-chip" onclick="setFnExpr('cos(x)')">cos</span>
+        <span class="fn-chip" onclick="setFnExpr('tan(x)')">tan</span>
+        <span class="fn-chip" onclick="setFnExpr('x^2')">x²</span>
+        <span class="fn-chip" onclick="setFnExpr('x^3')">x³</span>
+        <span class="fn-chip" onclick="setFnExpr('sqrt(x)')">√x</span>
+        <span class="fn-chip" onclick="setFnExpr('abs(x)')">|x|</span>
+        <span class="fn-chip" onclick="setFnExpr('exp(x)')">eˣ</span>
+        <span class="fn-chip" onclick="setFnExpr('log(x)')">ln</span>
+        <span class="fn-chip" onclick="setFnExpr('1/x')">1/x</span>
+        <span class="fn-chip" onclick="setFnExpr('2^x')">2ˣ</span>
+        <span class="fn-chip" onclick="setFnExpr('sin(x)/x')">sinc</span>
+        <span class="fn-chip" onclick="setFnExpr('x^2/4')">抛物线</span>
+        <span class="fn-chip" onclick="setFnExpr('sqrt(1-x^2)')">半圆</span>
+        <span class="fn-chip" onclick="setFnExpr('floor(x)')">取整</span>
+        <span class="fn-chip" onclick="setFnExpr('1/(1+exp(-x))')">sigmoid</span>
+        <span class="fn-chip" onclick="setFnExpr('sin(2*x)+cos(x)')">复合</span>
+        <span class="fn-chip" onclick="setFnExpr('x^2-2*x-3')">二次</span>
+      </div>
+      <button class="fn-draw-btn" onclick="drawFunction()">▶ 绘制函数</button>
+      <div style="display:flex;gap:4px;margin-top:4px">
+        <button class="fn-draw-btn" style="background:linear-gradient(135deg,#0ea5e9,#3b82f6)" onclick="drawParametric()">参数曲线</button>
+        <button class="fn-draw-btn" style="background:linear-gradient(135deg,#10b981,#059669)" onclick="drawPolar()">极坐标</button>
+      </div>
+      <div class="fn-stat" id="fn-stat"></div>
+    </div>
+
+    <div class="tg-label">颜色预设</div>
+    <div style="padding:4px 12px 8px;display:flex;gap:6px;flex-wrap:wrap">
+      <div class="cswatch" style="background:#1e293b;border-color:transparent" onclick="setCurrentColor('#1e293b')" title="默认黑"></div>
+      <div class="cswatch" style="background:#3b82f6;border-color:transparent" onclick="setCurrentColor('#3b82f6')" title="主要对象蓝"></div>
+      <div class="cswatch" style="background:#f59e0b;border-color:transparent" onclick="setCurrentColor('#f59e0b')" title="顶点琥珀"></div>
+      <div class="cswatch" style="background:#ef4444;border-color:transparent" onclick="setCurrentColor('#ef4444')" title="对比红"></div>
+      <div class="cswatch" style="background:#8b5cf6;border-color:transparent" onclick="setCurrentColor('#8b5cf6')" title="向量紫"></div>
+      <div class="cswatch" style="background:#10b981;border-color:transparent" onclick="setCurrentColor('#10b981')" title="角度绿"></div>
+      <div class="cswatch" style="background:#9ca3af;border-color:transparent" onclick="setCurrentColor('#9ca3af')" title="辅助线灰"></div>
+      <div class="cswatch" style="background:#f97316;border-color:transparent" onclick="setCurrentColor('#f97316')" title="橙色"></div>
+    </div>
+    <div style="padding:0 12px 4px;font-size:11px;color:rgba(255,255,255,.3)">
+      当前颜色：<span id="cur-color-label" style="font-family:monospace">#1e293b</span>
+    </div>
+
+    <div class="tg-label">线宽 / 线型</div>
+    <div style="padding:4px 12px 6px">
+      <input type="range" min="1" max="6" step="0.5" value="2" id="sw-slider"
+        oninput="_sw=+this.value;document.getElementById('sw-val').textContent=this.value+'px'"
+        style="width:100%;accent-color:#3b82f6">
+      <div style="font-size:10px;color:rgba(255,255,255,.4)">线宽：<span id="sw-val">2px</span></div>
+    </div>
+    <div style="padding:0 12px 10px;display:flex;gap:4px">
+      <button class="tb" style="flex:1;font-size:11px;justify-content:center" onclick="setCurrentDash(0)">实线</button>
+      <button class="tb" style="flex:1;font-size:11px;justify-content:center" onclick="setCurrentDash(2)">虚线</button>
+      <button class="tb" style="flex:1;font-size:11px;justify-content:center" onclick="setCurrentDash(3)">点线</button>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ── Canvas ── -->
+  <div class="canvas-col">
+  <div class="canvas-area">
+    <div id="jxgbox"></div>
+    <!-- ── 3D Overlay (Three.js) ── -->
+        <div id="threejs-wrap">
+          <canvas id="threejs-canvas"></canvas>
+          <div class="d3-bar">
+            <button class="tb primary" onclick="switch2D()" style="font-size:11px;height:26px;padding:0 8px">← 返回2D</button>
+            <button class="tb" onclick="add3DShape('box')" style="font-size:11px;height:26px;padding:0 7px">🧱 长方体</button>
+            <button class="tb" onclick="add3DShape('prism')" style="font-size:11px;height:26px;padding:0 7px">◎ 棱柱</button>
+            <button class="tb" onclick="add3DShape('sphere')" style="font-size:11px;height:26px;padding:0 7px">● 球</button>
+            <button class="tb" onclick="add3DShape('cylinder')" style="font-size:11px;height:26px;padding:0 7px">⌀ 圆柱</button>
+            <button class="tb" onclick="add3DShape('cone')" style="font-size:11px;height:26px;padding:0 7px">▽ 圆锥</button>
+            <button class="tb" onclick="add3DShape('pyramid')" style="font-size:11px;height:26px;padding:0 7px">△ 棱锥</button>
+            <button class="tb" onclick="add3DShape('torus')" style="font-size:11px;height:26px;padding:0 7px">◎ 圆环</button>
+            <button class="tb" onclick="add3DShape('octahedron')" style="font-size:11px;height:26px;padding:0 7px">◇ 八面体</button>
+            <button class="tb" onclick="add3DShape('tetrahedron')" style="font-size:11px;height:26px;padding:0 7px">▲ 四面体</button>
+            <div class="sep" style="height:20px"></div>
+            <div class="sep" style="height:20px"></div>
+            <button class="tb" id="btn-3d-vertex" onclick="toggle3DVertexMode()" style="font-size:11px;height:26px;padding:0 7px" title="点击画布添加顶点">✦ 加顶点</button>
+            <button class="tb" id="btn-3d-edge" onclick="toggle3DEdgeMode()" style="font-size:11px;height:26px;padding:0 7px" title="连接两个顶点画边">╱ 连线</button>
+            <button class="tb" id="btn-3d-edges" onclick="toggle3DEdgeLines()" style="font-size:11px;height:26px;padding:0 7px" title="切换3D形状棱线显示">边线 ✓</button>
+            <button class="tb danger-btn" onclick="clearAll3DEdit()" style="font-size:11px;height:26px;padding:0 7px" title="清除所有顶点和边">🗑 清空编辑</button>
+            <input type="color" id="d3-color-pick" value="#3b82f6" title="形状颜色"
+              style="width:28px;height:26px;padding:1px;border:1px solid var(--border);border-radius:4px;cursor:pointer"
+              onchange="applyD3Color(this.value)">
+            <div class="sep" style="height:20px"></div>
+            <button class="tb" onclick="capture3D()" style="font-size:11px;height:26px;padding:0 7px">⬇ 截图</button>
+            <button class="tb success" onclick="export3DToAnnotation()" style="font-size:11px;height:26px;padding:0 7px">⬆ 上传</button>
+          </div>
+          <div class="d3-shapes-panel" id="d3-shapes-panel">
+            <div class="d3-shapes-hd">图形列表</div>
+            <div id="d3-shapes-list"><div style="padding:8px 10px;font-size:11px;color:var(--muted);text-align:center">点击上方按鈕添加</div></div>
+          </div>
+          <div class="d3-dim-bar" id="d3-dim-bar">
+            已选：<strong id="d3-sel-name"></strong>
+            <span id="d3-dim-inputs" style="display:contents"></span>
+            <button class="tb" style="font-size:11px;height:22px" onclick="applyD3Dims()">应用</button>
+            <button class="tb danger-btn" style="font-size:11px;height:22px" onclick="delD3Sel()">删除</button>
+          </div>
+          <!-- 顶点属性栏 -->
+          <div class="d3-dim-bar" id="d3-vtx-bar" style="bottom:72px">
+            顶点&nbsp;<strong id="d3-vtx-label"></strong>
+            &nbsp;x:<input class="d3-dim-input" id="d3-vtx-x" type="number" step="0.5" style="width:46px">
+            &nbsp;y:<input class="d3-dim-input" id="d3-vtx-y" type="number" step="0.5" style="width:46px" title="Shift+拖动调整高度">
+            &nbsp;z:<input class="d3-dim-input" id="d3-vtx-z" type="number" step="0.5" style="width:46px">
+            <button class="tb" style="font-size:11px;height:22px" onclick="applyVtxPos()">应用</button>
+            <button class="tb danger-btn" style="font-size:11px;height:22px" onclick="delSelVertex3D()">删除</button>
+          </div>
+          <!-- 3D 编辑模式提示 -->
+          <div id="d3-mode-hint" style="display:none;position:absolute;top:44px;left:50%;transform:translateX(-50%);
+               background:rgba(30,42,74,.88);color:#fff;font-size:12px;padding:5px 16px;border-radius:20px;
+               pointer-events:none;z-index:10;white-space:nowrap"></div>
+        </div>
+
+        <!-- ── Constraint / Measurement Panel ── -->
+        <div id="constraint-panel">
+          <div class="cp-hd">
+            <span class="cp-title">⛓ 测量 &amp; 约束</span>
+            <button class="tb" style="height:22px;padding:0 6px;font-size:11px" onclick="toggleConstraintPanel()">✕</button>
+          </div>
+          <div class="cp-body" id="cp-body">
+            <div class="cp-empty" id="cp-empty">暂无测量项目<br>使用左侧「测量」工具点击图形</div>
+          </div>
+          <div class="cp-add-row">
+            <select class="cp-add-sel" id="cp-type-sel">
+              <option value="length">线段长度</option>
+              <option value="angle">角度</option>
+            </select>
+            <button class="tb" style="height:26px;font-size:11px" onclick="addMeasureHint()">切换工具</button>
+          </div>
+        </div>
+
+        <!-- ── Measure Tooltip ── -->
+        <div class="measure-bar" id="measure-bar"></div>
+
+        <!-- ── Step Recorder Bar ── -->
+        <div class="rec-bar" id="rec-bar">
+          <div class="rec-dot" id="rec-dot"></div>
+          <span id="rec-label" style="font-size:11.5px;font-weight:700;min-width:54px">待录制</span>
+          <span id="rec-count" style="font-size:11px;color:var(--muted)"></span>
+          <div class="sep" style="height:18px"></div>
+          <button class="tb" id="rec-start-btn" onclick="startRecord()" style="font-size:11px;height:24px;background:#ef4444;color:#fff;border-color:#ef4444">● 开始</button>
+          <button class="tb" id="rec-stop-btn" onclick="stopRecord()" style="font-size:11px;height:24px" disabled>■ 停止</button>
+          <button class="tb primary" id="rec-play-btn" onclick="playRecord()" style="font-size:11px;height:24px" disabled>▶ 回放</button>
+          <button class="tb" id="rec-export-btn" onclick="exportRecord()" style="font-size:11px;height:24px" disabled>⬇ 导出</button>
+          <span id="play-progress" style="font-size:11px;color:#3b82f6;font-weight:700"></span>
+        </div>
+
+    <div class="statusbar">
+      <span id="status-hint">选择左侧工具开始绘图</span>
+      <span id="status-coords"></span>
+      <span id="status-count"></span>
+    </div>
+
+  </div><!-- /canvas-area -->
+  </div><!-- /canvas-col -->
+
+  <!-- ── AI Panel (right sidebar) ── -->
+  <div class="ai-panel" id="ai-panel" style="position:relative">
+    <div class="ai-resize-handle" id="ai-resize-handle"></div>
+    <div class="ai-panel-hd">
+      <div class="ai-panel-hd-top">
+        <span class="ai-panel-title">🤖 AI 绘图</span>
+        <span id="ai-provider-tag" style="font-size:11px;padding:1px 6px;border-radius:99px;background:#ede9fe;color:#764ba2;font-weight:700"></span>
+        <div style="flex:1"></div>
+        <a href="/ai-settings.html" target="_blank" class="tb" style="height:22px;padding:0 6px;font-size:11px;text-decoration:none;flex-shrink:0">⚙️</a>
+        <button class="tb" style="height:22px;padding:0 6px;font-size:11px;flex-shrink:0" onclick="toggleAIPanel()">✕</button>
+      </div>
+      <div class="ai-panel-tabs">
+        <button class="ai-tab-btn active" data-tab="draw" onclick="switchAITab('draw')">✨ 绘图</button>
+        <button class="ai-tab-btn" data-tab="beautify" onclick="switchAITab('beautify')">💅 美化</button>
+        <button class="ai-tab-btn" data-tab="connect" onclick="switchAITab('connect')">🔗 连线</button>
+        <button class="ai-tab-btn" data-tab="export" onclick="switchAITab('export')">📤 导出</button>
+        <button class="ai-tab-btn" data-tab="quiz" onclick="switchAITab('quiz')">🧠 出题</button>
+        <button class="ai-tab-btn" data-tab="handwrite" onclick="switchAITab('handwrite')">✏️ 手写</button>
+      </div>
+    </div>
+    <!-- Tab: 绘图 -->
+      <div class="ai-tab-content" id="ai-tab-draw">
+        <div class="ai-panel-body">
+          <div class="ai-left">
+            <div class="ai-lbl">描述要绘制的几何图形</div>
+            <textarea class="ai-prompt" id="ai-prompt" placeholder="例如：画等边三角形ABC，边长4，标注三个内角…"></textarea>
+            <div class="ai-chips" id="ai-chips"></div>
+            <div class="ai-stat" id="ai-stat"></div>
+          </div>
+          <div class="ai-right">
+            <div class="ai-lbl">生成代码（可手动编辑后执行）</div>
+            <textarea class="ai-code" id="ai-code" placeholder="AI 生成的 JS 代码显示在此…" spellcheck="false"></textarea>
+            <div class="ai-actions">
+              <button class="ai-btn ai-btn-gen" id="ai-btn-gen" onclick="aiGenerate()">✨ 生成</button>
+              <button class="ai-btn ai-btn-apply" onclick="aiApply()">▶ 执行</button>
+              <button class="ai-btn ai-btn-clr" onclick="document.getElementById('ai-code').value=''">清空</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Tab: 美化 -->
+      <div class="ai-tab-content" id="ai-tab-beautify" style="display:none">
+        <div class="ai-panel-body">
+          <div class="ai-left">
+            <div class="ai-lbl">自动美化当前画板图形</div>
+            <p style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:6px">AI 分析当前图形，自动优化颜色搭配、线宽、标注位置。</p>
+            <div class="ai-chips" style="margin-bottom:6px">
+              <span class="ai-chip" onclick="setBeautifyStyle('教材简洁')">教材简洁风</span>
+              <span class="ai-chip" onclick="setBeautifyStyle('彩色高亮')">彩色高亮风</span>
+              <span class="ai-chip" onclick="setBeautifyStyle('黑白素描')">黑白素描风</span>
+              <span class="ai-chip" onclick="setBeautifyStyle('考试规范')">考试规范风</span>
+            </div>
+            <input class="ai-sinput" id="beautify-style" placeholder="风格要求（如：蓝色主调，线到2px）" style="width:100%;margin-bottom:4px" />
+            <div class="ai-stat" id="beautify-stat"></div>
+          </div>
+          <div class="ai-right">
+            <div class="ai-lbl">美化代码</div>
+            <textarea class="ai-code" id="beautify-code" placeholder="AI 生成的美化代码…" spellcheck="false"></textarea>
+            <div class="ai-actions">
+              <button class="ai-btn ai-btn-gen" id="beautify-btn" onclick="aiBeautify()">💅 生成美化</button>
+              <button class="ai-btn ai-btn-apply" onclick="aiApplyCode('beautify-code')">▶ 执行</button>
+              <button class="ai-btn ai-btn-clr" onclick="document.getElementById('beautify-code').value=''">清空</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Tab: 连线 -->
+      <div class="ai-tab-content" id="ai-tab-connect" style="display:none">
+        <div class="ai-panel-body">
+          <div class="ai-left">
+            <div class="ai-lbl">AI 自动连线 / 补全图形</div>
+            <p style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:6px">描述连线方式，AI 识别当前已有点自动生成连线。</p>
+            <div class="ai-chips" style="margin-bottom:4px">
+              <span class="ai-chip" onclick="setConnectPrompt('连接所有点形成多边形')">连成多边形</span>
+              <span class="ai-chip" onclick="setConnectPrompt('画所有对角线')">画对角线</span>
+              <span class="ai-chip" onclick="setConnectPrompt('画每个三角形的中线')">画中线</span>
+              <span class="ai-chip" onclick="setConnectPrompt('画角平分线')">画角平分线</span>
+              <span class="ai-chip" onclick="setConnectPrompt('画外接圆')">画外接圆</span>
+              <span class="ai-chip" onclick="setConnectPrompt('画内切圆')">画内切圆</span>
+            </div>
+            <textarea class="ai-prompt" id="connect-prompt" placeholder="描述连线方式…" style="min-height:45px;flex:0 0 auto"></textarea>
+            <div class="ai-stat" id="connect-stat"></div>
+          </div>
+          <div class="ai-right">
+            <div class="ai-lbl">连线代码</div>
+            <textarea class="ai-code" id="connect-code" placeholder="AI 生成的连线代码…" spellcheck="false"></textarea>
+            <div class="ai-actions">
+              <button class="ai-btn ai-btn-gen" id="connect-btn" onclick="aiConnect()">🔗 生成连线</button>
+              <button class="ai-btn ai-btn-apply" onclick="aiApplyCode('connect-code')">▶ 执行</button>
+              <button class="ai-btn ai-btn-clr" onclick="document.getElementById('connect-code').value=''">清空</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Tab: 导出代码 -->
+      <div class="ai-tab-content" id="ai-tab-export" style="display:none">
+        <div class="ai-panel-body">
+          <div class="ai-left">
+            <div class="ai-lbl">将当前图形导出为可视化代码</div>
+            <p style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:8px">AI 分析画板图形，生成 GeoGebra / Desmos 代码，可直接粘贴到标注系统代码字段。</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+              <button class="ai-btn" style="flex:0 0 auto;padding:5px 12px;background:#3b82f6;color:#fff;font-size:12px" onclick="aiExportCode('geogebra')">📐 → GeoGebra</button>
+              <button class="ai-btn" style="flex:0 0 auto;padding:5px 12px;background:#f59e0b;color:#fff;font-size:12px" onclick="aiExportCode('desmos')">📊 → Desmos</button>
+            </div>
+            <div class="ai-stat" id="export-stat"></div>
+          </div>
+          <div class="ai-right">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <div class="ai-lbl" style="flex:1">导出的代码</div>
+              <button class="ai-btn ai-btn-clr" style="flex:0 0 auto;padding:3px 10px;font-size:11px" onclick="copyExportCode()">📋 复制</button>
+              <button class="ai-btn" id="export-send-btn" style="flex:0 0 auto;padding:3px 10px;font-size:11px;background:#10b981;color:#fff;display:none" onclick="sendCodeToAnnotation()">⬆ 发送到标注</button>
+            </div>
+            <textarea class="ai-code" id="export-code" placeholder="点击左侧按鈕生成代码…" spellcheck="false" style="flex:1"></textarea>
+            <div id="export-engine-tag" style="font-size:11px;color:var(--muted);margin-top:3px"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Tab: 🧠 出题 -->
+      <div class="ai-tab-content" id="ai-tab-quiz" style="display:none">
+        <div class="ai-panel-body">
+          <div class="ai-left">
+            <div class="ai-lbl">根据当前图形 AI 出数学题</div>
+            <p style="font-size:11.5px;color:var(--muted);line-height:1.55;margin-bottom:5px">AI 分析画板图形，生成高中几何题（含条件、求证/解和参考答案）。</p>
+            <div class="ai-chips" style="margin-bottom:5px">
+              <span class="ai-chip" onclick="setQuizDiff('基础')">基础</span>
+              <span class="ai-chip" onclick="setQuizDiff('中等难度')">中等</span>
+              <span class="ai-chip" onclick="setQuizDiff('综合难题')">综合</span>
+              <span class="ai-chip" onclick="setQuizDiff('竞赛级')">竞赛</span>
+            </div>
+            <input class="ai-sinput" id="quiz-diff" placeholder="难度/要求（如：适合高一，考角平分线）" style="width:100%;margin-bottom:4px"/>
+            <div class="ai-stat" id="quiz-stat"></div>
+          </div>
+          <div class="ai-right">
+            <div class="ai-lbl">生成的题目</div>
+            <textarea class="ai-code" id="quiz-result" placeholder="AI 生成的题目显示在此…" spellcheck="true" style="flex:1;font-size:12.5px;line-height:1.6;font-family:inherit"></textarea>
+            <div class="ai-actions">
+              <button class="ai-btn ai-btn-gen" id="quiz-btn" onclick="aiGenerateQuiz()">🧠 生成题目</button>
+              <button class="ai-btn ai-btn-apply" onclick="copyQuizToAnnotation()">⬆ 写入标注</button>
+              <button class="ai-btn ai-btn-clr" onclick="document.getElementById('quiz-result').value=''">清空</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: ✏️ 手写识别 -->
+      <div class="ai-tab-content" id="ai-tab-handwrite" style="display:none">
+        <div class="ai-panel-body">
+          <div class="ai-left" style="min-width:195px;max-width:220px">
+            <div class="ai-lbl">上传手绘几何草图</div>
+            <p style="font-size:11.5px;color:var(--muted);line-height:1.5;margin-bottom:6px">拍照/扫描手绘图→AI 识别→精确 JSXGraph 图形。</p>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <button class="ai-btn ai-btn-clr" style="flex:0 0 auto;padding:4px 10px" onclick="document.getElementById('hw-file').click()">📷 选图</button>
+              <span id="hw-filename" style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">未选择</span>
+              <input type="file" id="hw-file" accept="image/*" onchange="loadHandwriteImg(event)" style="display:none"/>
+            </div>
+            <canvas id="hw-preview" width="185" height="120" style="border:1px solid var(--border);border-radius:5px;background:#f8fafc;display:block"></canvas>
+            <div class="ai-stat" id="hw-stat" style="margin-top:4px"></div>
+          </div>
+          <div class="ai-right">
+            <div class="ai-lbl">识别生成的代码</div>
+            <textarea class="ai-code" id="hw-code" placeholder="AI 识别后生成的 JSXGraph 代码…" spellcheck="false"></textarea>
+            <div class="ai-actions">
+              <button class="ai-btn ai-btn-gen" id="hw-btn" onclick="recognizeHandwrite()">✏️ 识别并生成</button>
+              <button class="ai-btn ai-btn-apply" onclick="aiApplyCode('hw-code')">▶ 执行</button>
+              <button class="ai-btn ai-btn-clr" onclick="document.getElementById('hw-code').value=''">清空</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+  </div>
+  <!-- ── Properties ── -->
+  <div class="props" id="props-panel">
+    <div class="props-hd">属性面板</div>
+    <div class="props-empty" id="props-empty">
+      <div class="props-empty-icon">⚙️</div>
+      <div>切换到「移动/选择」<br>工具后点击对象<br>在此编辑属性</div>
+    </div>
+    <div id="props-content" style="display:none"></div>
+  </div>
+
+</div><!-- /layout -->
+
+<script>
+'use strict';
+// ─────────────────────────────────────────────
+//  配置
+// ─────────────────────────────────────────────
+const API = 'http://localhost:8765';
+const urlParams = new URLSearchParams(location.search);
+const TID = urlParams.get('tid') || null;
+
+const PALETTE = ['#1e293b','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#10b981','#9ca3af','#f97316'];
+
+const HINTS = {
+  move:          '点击对象选中，拖动移动；Ctrl+点击多选；点击空白取消选择',
+  erase:         '点击任意对象将其删除',
+  point:         '点击画布放置点（靠近已有点自动吸附）',
+  midpoint:      '依次点击两个已有点，自动创建中点',
+  intersection:  '依次点击两条线（或线与圆），自动创建交点',
+  segment:       '点击第一个端点…',
+  line:          '点击第一个点…',
+  ray:           '点击射线起点…',
+  perpendicular: '先点击一条直线/线段，再点击一个点，创建垂线',
+  parallel:      '先点击一条直线/线段，再点击一个点，创建平行线',
+  tangent:       '先点击一条曲线/圆，再点击一个点，创建切线',
+  circle:        '点击圆心…',
+  arc:           '点击弧的圆心…',
+  polygon:       '依次点击各顶点，双击最后一点或按 Enter 完成',
+  angle:         '依次点击 3 个点（第 2 个为顶点），创建角标记',
+  rightangle:    '依次点击 3 个点（第 2 个为顶点），创建直角标记',
+  text:          '点击画布添加文字',
+  vector:        '点击向量起点…',
+  'vector-coord':'点击向量起点，再点击终点（坐标显示）',
+  ellipse:       '点击第一个焦点…',
+  parabola:      '点击焦点，再点击顶点，绘制抛物线',
+  hyperbola:     '点击第一个焦点，再点击第二个焦点，再点击双曲线上一点',
+  circle3pt:     '点击第一个点…',
+  regpoly:       '点击正多边形第一个顶点…',
+  bisector:      '先点击角的顶点，再点击两边上各一点',
+  rectangle:     '点击矩形第一个顶点，再点击对角顶点',
+  rhombus:       '点击菱形中心，再点击一个顶点',
+  trapezoid:     '点击等腰梯形底边中心，再点击一端',
+};
+
+// ─────────────────────────────────────────────
+//  状态
+// ─────────────────────────────────────────────
+let board;
+let tool = 'move';
+let ts   = {};        // tool state per tool
+let undoStack = [], redoStack = [];
+let selectedEl = null;
+let _nameIdx = 0;
+const _usedNames = new Set();
+let _color = '#1e293b';
+let _dash  = 0;
+let _sw    = 2;
+let polyPts = [];
+let selectedEls = new Set();
+let showAxis = true, showGrid = true;
+
+// ─────────────────────────────────────────────
+//  Board init
+// ─────────────────────────────────────────────
+function initBoard() {
+  if (typeof JXG === 'undefined') {
+    document.getElementById('status-hint').textContent = '❌ JSXGraph 未加载，请刷新页面';
+    return;
+  }
+  board = JXG.JSXGraph.initBoard('jxgbox', {
+    boundingbox: [-8, 8, 8, -8],
+    axis: true, grid: true,
+    showCopyright: false, showNavigation: false,
+    pan:  { enabled: true, needShift: false },
+    zoom: { enabled: true, wheel: true, min: 0.05, max: 200 },
+    keepAspectRatio: true, renderer: 'svg',
+    defaultAxes: {
+      x: { strokeColor: '#94a3b8', ticks: { strokeColor: '#94a3b8', label: { strokeColor: '#94a3b8' } } },
+      y: { strokeColor: '#94a3b8', ticks: { strokeColor: '#94a3b8', label: { strokeColor: '#94a3b8' } } },
+    }
+  });
+  board.on('move', onMove);
+  board.on('down', onDown);
+  board.on('dblclick', onDblClick);
+  window.board = board;
+}
+initBoard();
+
+// ─────────────────────────────────────────────
+//  Function panel Enter key
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const fnInput = document.getElementById('fn-expr');
+  if (fnInput) fnInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') drawFunction();
+  });
+});
+
+// ─────────────────────────────────────────────
+//  Point naming
+// ─────────────────────────────────────────────
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function nextName() {
+  while (true) {
+    const i = _nameIdx++;
+    const n = LETTERS[i % 26] + (i < 26 ? '' : Math.floor(i / 26));
+    if (!_usedNames.has(n)) { _usedNames.add(n); return n; }
+  }
+}
+function freeName(n) { _usedNames.delete(n); }
+
+// ─────────────────────────────────────────────
+//  Undo / Redo
+// ─────────────────────────────────────────────
+function pushUndo(undoFn) {
+  undoStack.push(undoFn);
+  redoStack = [];
+  updateUndoBtns();
+}
+function undo() {
+  if (!undoStack.length) return;
+  const fn = undoStack.pop();
+  fn();
+  updatePropsPanel(null);
+  updateUndoBtns();
+}
+function redo() {} // simplified: no redo of structural changes
+function updateUndoBtns() {
+  document.getElementById('btn-undo').disabled = !undoStack.length;
+  document.getElementById('btn-redo').disabled = !redoStack.length;
+}
+
+// ─────────────────────────────────────────────
+//  Snap to existing point
+// ─────────────────────────────────────────────
+function snapPt(x, y) {
+  const bb = board.getBoundingBox();
+  const thresh = Math.abs(bb[2] - bb[0]) * 0.018;
+  let best = null, bestD = Infinity;
+  for (const id in board.objects) {
+    const o = board.objects[id];
+    if (o.type === JXG.OBJECT_TYPE_POINT && o.visProp.visible !== false) {
+      const dx = o.X() - x, dy = o.Y() - y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < thresh && d < bestD) { best = o; bestD = d; }
+    }
+  }
+  return best;
+}
+
+// ─────────────────────────────────────────────
+//  Create elements (with undo)
+// ─────────────────────────────────────────────
+function mkPoint(x, y, name, opts) {
+  const n = name || nextName();
+  const el = board.create('point', [x, y], {
+    name: n, size: 4,
+    strokeColor: _color, fillColor: _color,
+    label: { fontSize: 14, strokeColor: _color, offset: [7, 7] },
+    snapToGrid: false, ...opts
+  });
+  el._gb = 'point';
+  pushUndo(() => { rmEl(el); freeName(n); });
+  hookEl(el);
+  updateCount();
+  return el;
+}
+
+function mkSeg(p1, p2) {
+  const el = board.create('segment', [p1, p2], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash
+  });
+  el._gb = 'segment';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkLine(p1, p2) {
+  const el = board.create('line', [p1, p2], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash
+  });
+  el._gb = 'line';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkRay(p1, p2) {
+  const el = board.create('line', [p1, p2], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash,
+    straightFirst: false, straightLast: true,
+    lastArrow: { type: 1, size: 6 }
+  });
+  el._gb = 'ray';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkCircle(ctr, rpt) {
+  const el = board.create('circle', [ctr, rpt], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash,
+    fillColor: 'none', fillOpacity: 0
+  });
+  el._gb = 'circle';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkPolygon(pts) {
+  const el = board.create('polygon', pts, {
+    fillColor: _color, fillOpacity: 0.08,
+    borders: { strokeColor: _color, strokeWidth: _sw, dash: _dash }
+  });
+  el._gb = 'polygon';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkAngle(p1, vtx, p2, isRight) {
+  const opts = isRight
+    ? { type: 'square', radius: 0.35, strokeColor: '#10b981', fillColor: '#10b981', fillOpacity: 0.12, name: '' }
+    : { radius: 0.5, strokeColor: '#10b981', fillColor: '#10b981', fillOpacity: 0.15,
+        name: () => (el.Value() * 180 / Math.PI).toFixed(1) + '°' };
+  const el = board.create('angle', [p1, vtx, p2], opts);
+  el._gb = isRight ? 'rightangle' : 'angle';
+  pushUndo(() => rmEl(el));
+  updateCount(); return el;
+}
+
+function mkMidpoint(p1, p2) {
+  const n = nextName();
+  const el = board.create('midpoint', [p1, p2], {
+    name: n, size: 4, strokeColor: _color, fillColor: _color,
+    label: { fontSize: 14, strokeColor: _color, offset: [7, 7] }
+  });
+  el._gb = 'point';
+  pushUndo(() => { rmEl(el); freeName(n); });
+  hookEl(el); updateCount(); return el;
+}
+
+function mkPerp(pt, ln) {
+  const el = board.create('perpendicular', [pt, ln], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash
+  });
+  el._gb = 'perpendicular';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkParallel(pt, ln) {
+  const el = board.create('parallel', [ln, pt], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash
+  });
+  el._gb = 'parallel';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkArc(ctr, p1, p2) {
+  const el = board.create('arc', [ctr, p1, p2], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash
+  });
+  el._gb = 'arc';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkText(x, y, txt) {
+  const el = board.create('text', [x, y, txt], {
+    strokeColor: _color, fontSize: 16, fixed: false
+  });
+  el._gb = 'text';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+
+function mkVector(p1, p2) {
+  const el = board.create('arrow', [p1, p2], {
+    strokeColor: _color, strokeWidth: _sw + 0.5, dash: _dash,
+    lastArrow: { type: 1, size: 8 }
+  });
+  el._gb = 'vector';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkEllipse(f1, f2, p3) {
+  const el = board.create('ellipse', [f1, f2, p3], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash,
+    fillColor: 'none', fillOpacity: 0
+  });
+  el._gb = 'ellipse';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkCircle3(p1, p2, p3) {
+  const el = board.create('circumcircle', [p1, p2, p3], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash,
+    fillColor: 'none', fillOpacity: 0
+  });
+  el._gb = 'circumcircle';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkRegPoly(p1, p2, n) {
+  const el = board.create('regularpolygon', [p1, p2, n], {
+    fillColor: _color, fillOpacity: 0.1,
+    borders: { strokeColor: _color, strokeWidth: _sw, dash: _dash }
+  });
+  el._gb = 'regpoly';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkBisector(vtx, p1, p2) {
+  const el = board.create('bisector', [p1, vtx, p2], {
+    strokeColor: _color, strokeWidth: _sw, dash: _dash
+  });
+  el._gb = 'bisector';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+// ── New shapes ────────────────────────────────
+function mkParabola(focus, vertex) {
+  // parabola via functiongraph: y = a*x^2 + bx + c through parametric approach
+  // We use the focus-directrix definition: focusY is above/below vertex
+  const a = focus.Y() - vertex.Y(); // signed focal parameter
+  if (Math.abs(a) < 0.001) { hint('焦点和顶点不能重合'); return null; }
+  const vx = vertex.X(), vy = vertex.Y();
+  const focalLen = Math.abs(a);
+  const upward = focus.Y() > vertex.Y();
+  const el = board.create('functiongraph', [
+    x => upward
+      ? vy + (x - vx) * (x - vx) / (4 * focalLen)
+      : vy - (x - vx) * (x - vx) / (4 * focalLen),
+    -12, 12
+  ], { strokeColor: _color, strokeWidth: _sw, dash: _dash });
+  el._gb = 'parabola';
+  pushUndo(() => rmEl(el));
+  hookEl(el); updateCount(); return el;
+}
+
+function mkHyperbola(f1, f2, p) {
+  try {
+    const el = board.create('hyperbola', [f1, f2, p], {
+      strokeColor: _color, strokeWidth: _sw, dash: _dash,
+      fillColor: 'none'
+    });
+    el._gb = 'hyperbola';
+    pushUndo(() => rmEl(el));
+    hookEl(el); updateCount(); return el;
+  } catch(e) {
+    hint('双曲线创建失败，请调整点的位置');
+    return null;
+  }
+}
+
+function mkRectangle(p1x, p1y, p2x, p2y) {
+  const pts = [
+    board.create('point', [p1x, p1y], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+    board.create('point', [p2x, p1y], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+    board.create('point', [p2x, p2y], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+    board.create('point', [p1x, p2y], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+  ];
+  pts.forEach(p => { p._gb = 'point'; hookEl(p); });
+  const el = board.create('polygon', pts, {
+    fillColor: _color, fillOpacity: 0.08,
+    borders: { strokeColor: _color, strokeWidth: _sw, dash: _dash }
+  });
+  el._gb = 'polygon';
+  pushUndo(() => { rmEl(el); pts.forEach(p => { try{rmEl(p);}catch(_){} }); });
+  hookEl(el); updateCount(); return el;
+}
+
+function mkRhombus(cx, cy, r) {
+  const pts = [
+    board.create('point', [cx,    cy + r], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+    board.create('point', [cx + r, cy   ], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+    board.create('point', [cx,    cy - r], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+    board.create('point', [cx - r, cy   ], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+  ];
+  pts.forEach(p => { p._gb = 'point'; hookEl(p); });
+  const el = board.create('polygon', pts, {
+    fillColor: _color, fillOpacity: 0.08,
+    borders: { strokeColor: _color, strokeWidth: _sw, dash: _dash }
+  });
+  el._gb = 'polygon';
+  pushUndo(() => { rmEl(el); pts.forEach(p => { try{rmEl(p);}catch(_){} }); });
+  hookEl(el); updateCount(); return el;
+}
+
+function mkTrapezoid(cx, cy, topW, botW, h) {
+  const pts = [
+    board.create('point', [cx - botW/2, cy    ], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+    board.create('point', [cx + botW/2, cy    ], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+    board.create('point', [cx + topW/2, cy + h], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+    board.create('point', [cx - topW/2, cy + h], { name: nextName(), size:4, strokeColor:_color, fillColor:_color, label:{fontSize:14,strokeColor:_color,offset:[7,7]} }),
+  ];
+  pts.forEach(p => { p._gb = 'point'; hookEl(p); });
+  const el = board.create('polygon', pts, {
+    fillColor: _color, fillOpacity: 0.08,
+    borders: { strokeColor: _color, strokeWidth: _sw, dash: _dash }
+  });
+  el._gb = 'polygon';
+  pushUndo(() => { rmEl(el); pts.forEach(p => { try{rmEl(p);}catch(_){} }); });
+  hookEl(el); updateCount(); return el;
+}
+
+function mkVectorCoord(p1, p2) {
+  const dx = p2.X() - p1.X(), dy = p2.Y() - p1.Y();
+  const el = board.create('arrow', [p1, p2], {
+    strokeColor: _color, strokeWidth: _sw + 0.5, dash: _dash,
+    lastArrow: { type: 1, size: 8 }
+  });
+  el._gb = 'vector';
+  const lbl = board.create('text', [
+    () => (p1.X() + p2.X()) / 2 + 0.2,
+    () => (p1.Y() + p2.Y()) / 2 + 0.2,
+    () => `(${(p2.X()-p1.X()).toFixed(2)}, ${(p2.Y()-p1.Y()).toFixed(2)})`
+  ], { fontSize:11, strokeColor:_color, fixed:true,
+       cssStyle:'background:rgba(255,255,255,.85);padding:1px 4px;border-radius:3px;font-family:monospace;pointer-events:none' });
+  lbl._gb = 'text';
+  pushUndo(() => { rmEl(el); try{rmEl(lbl);}catch(_){} });
+  hookEl(el); updateCount(); return el;
+}
+
+function mkTangentAtPoint(curve, p) {
+  try {
+    const el = board.create('tangent', [p, curve], {
+      strokeColor: _color, strokeWidth: _sw, dash: _dash
+    });
+    el._gb = 'tangent';
+    pushUndo(() => rmEl(el));
+    hookEl(el); updateCount(); return el;
+  } catch(e) {
+    hint('切线创建失败：请先点击曲线再点击点');
+    return null;
+  }
+}
+
+function mkIntersection(el1, el2) {
+  const n = nextName();
+  try {
+    const el = board.create('intersection', [el1, el2, 0], {
+      name: n, size: 4, strokeColor: _color, fillColor: _color,
+      label: { fontSize: 14, strokeColor: _color, offset: [7, 7] }
+    });
+    el._gb = 'point';
+    pushUndo(() => { rmEl(el); freeName(n); });
+    hookEl(el); updateCount(); return el;
+  } catch(e) {
+    freeName(n);
+    hint('交点创建失败：两对象无交点');
+    return null;
+  }
+}
+
+// ── Quick shapes ──────────────────────────────
+function quickShape(type) {
+  if (!board) return;
+  switch(type) {
+    case 'eq-triangle': {
+      const s = 4;
+      const p1 = mkPoint(-s/2, 0, nextName());
+      const p2 = mkPoint( s/2, 0, nextName());
+      const p3 = mkPoint(0, s * Math.sqrt(3)/2, nextName());
+      mkPolygon([p1, p2, p3]);
+      break;
+    }
+    case 'right-triangle': {
+      const p1 = mkPoint(0,  0, nextName());
+      const p2 = mkPoint(4,  0, nextName());
+      const p3 = mkPoint(0,  3, nextName());
+      mkPolygon([p1, p2, p3]);
+      break;
+    }
+    case 'square': {
+      const s = 4;
+      const p1 = mkPoint(-s/2, -s/2, nextName());
+      const p2 = mkPoint( s/2, -s/2, nextName());
+      const p3 = mkPoint( s/2,  s/2, nextName());
+      const p4 = mkPoint(-s/2,  s/2, nextName());
+      mkPolygon([p1, p2, p3, p4]);
+      break;
+    }
+    case 'unitvec-x': {
+      const o = board.create('point', [0, 0], { name:'O', size:4, strokeColor:_color, fillColor:_color, fixed:true, label:{fontSize:14} });
+      o._gb = 'point'; hookEl(o);
+      const e = board.create('point', [1, 0], { name:'i', size:4, strokeColor:_color, fillColor:_color, fixed:true, label:{fontSize:14} });
+      e._gb = 'point'; hookEl(e);
+      mkVector(o, e);
+      break;
+    }
+    case 'unitvec-y': {
+      const o = board.create('point', [0, 0], { name:'O', size:4, strokeColor:_color, fillColor:_color, fixed:true, label:{fontSize:14} });
+      o._gb = 'point'; hookEl(o);
+      const e = board.create('point', [0, 1], { name:'j', size:4, strokeColor:_color, fillColor:_color, fixed:true, label:{fontSize:14} });
+      e._gb = 'point'; hookEl(e);
+      mkVector(o, e);
+      break;
+    }
+  }
+}
+
+function selectAll() {
+  clearMultiSel();
+  for (const id in board.objects) {
+    const o = board.objects[id];
+    if (o._gb) {
+      selectedEls.add(o); o._savedFO = o.visProp?.fillopacity || 0;
+      try { o.setAttribute({ strokeOpacity: 0.55 }); } catch(_){}
+    }
+  }
+  updateMultiSelStatus();
+}
+
+function delSelBatch() {
+  if (selectedEls.size === 0 && !selectedEl) return;
+  if (selectedEls.size > 1) {
+    if (!confirm(`删除选中的 ${selectedEls.size} 个对象？`)) return;
+    // Push single batch undo
+    const els = [...selectedEls];
+    // Collect undo fns that are already in undoStack for these elements (complex; simplified approach)
+    pushUndo(() => {
+      hint(`已批量删除 ${els.length} 个对象（撤销仅恢复批量操作记录，不恢复图形）`);
+    });
+    selectedEls.forEach(el => { try { board.removeObject(el, true); } catch(_){} });
+    selectedEls.clear();
+    board.update(); updateCount(); updatePropsPanel(null);
+    return;
+  }
+  delSel();
+}
+
+// ─────────────────────────────────────────────
+//  函数图像
+// ─────────────────────────────────────────────
+function setFnExpr(expr) {
+  document.getElementById('fn-expr').value = expr;
+}
+
+function parseFnExpr(expr) {
+  return expr
+    .trim()
+    .replace(/\basin\b/g, 'Math.asin')
+    .replace(/\bacos\b/g, 'Math.acos')
+    .replace(/\batan2\b/g, 'Math.atan2')
+    .replace(/\batan\b/g, 'Math.atan')
+    .replace(/\bsinh\b/g, 'Math.sinh')
+    .replace(/\bcosh\b/g, 'Math.cosh')
+    .replace(/\btanh\b/g, 'Math.tanh')
+    .replace(/\bsin\b/g, 'Math.sin')
+    .replace(/\bcos\b/g, 'Math.cos')
+    .replace(/\btan\b/g, 'Math.tan')
+    .replace(/\bsqrt\b/g, 'Math.sqrt')
+    .replace(/\babs\b/g, 'Math.abs')
+    .replace(/\bexp\b/g, 'Math.exp')
+    .replace(/\blog10\b/g, 'Math.log10')
+    .replace(/\blog2\b/g, 'Math.log2')
+    .replace(/\blog\b/g, 'Math.log')
+    .replace(/\bln\b/g,  'Math.log')
+    .replace(/\bpi\b/g,  'Math.PI')
+    .replace(/\bPi\b/g,  'Math.PI')
+    .replace(/\bPI\b/g,  'Math.PI')
+    .replace(/\bfloor\b/g, 'Math.floor')
+    .replace(/\bceil\b/g,  'Math.ceil')
+    .replace(/\bround\b/g, 'Math.round')
+    .replace(/\bpow\b/g,   'Math.pow')
+    .replace(/\bmax\b/g,   'Math.max')
+    .replace(/\bmin\b/g,   'Math.min')
+    // Replace ^ with ** (careful not to break **)
+    .replace(/\*\*/g, '__POW__')
+    .replace(/\^/g, '**')
+    .replace(/__POW__/g, '**')
+    // 2x -> 2*x etc.
+    .replace(/(\d)\s*x/g, '$1*x')
+    .replace(/x\s*(\d)/g, 'x*$1');
+}
+
+// ─── Math preview renderer ───────────────────────────────────────────────────
+function _mathRender(raw) {
+  let s = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Greek + constants
+  s = s.replace(/\bpi\b/g,'π').replace(/\btheta\b/g,'θ')
+       .replace(/\balpha\b/g,'α').replace(/\bbeta\b/g,'β')
+       .replace(/\bgamma\b/g,'γ').replace(/\binfty\b|Infinity/g,'∞')
+       .replace(/\be\b/g,'e');
+  // Trig abbreviations
+  s = s.replace(/\basin\b/g,'arcsin').replace(/\bacos\b/g,'arccos')
+       .replace(/\batan\b/g,'arctan').replace(/\batan2\b/g,'atan2')
+       .replace(/\bsinh\b/g,'sinh').replace(/\bcosh\b/g,'cosh')
+       .replace(/\btanh\b/g,'tanh');
+  // Multiplication: don't show * 
+  s = s.replace(/\*/g,'·');
+  // Fractions: pattern like (a)/(b) or simple a/b
+  s = s.replace(/\(([^)]+)\)\/\(([^)]+)\)/g,
+    '<span class="fn-math-frac"><span>$1</span><span>$2</span></span>');
+  s = s.replace(/([\w.]+)\/([\w.]+)/g,
+    '<span class="fn-math-frac"><span>$1</span><span>$2</span></span>');
+  // sqrt
+  s = s.replace(/sqrt\(([^)]+)\)/g, '√($1)');
+  s = s.replace(/\babs\b\(([^)]+)\)/g, '|$1|');
+  // Powers
+  s = s.replace(/\^\(([^)]+)\)/g, (_,e)=>'<sup>'+e+'</sup>');
+  s = s.replace(/\^(-?[\d.]+)/g, (_,e)=>'<sup>'+e+'</sup>');
+  s = s.replace(/\^([a-zA-Z])/g, (_,e)=>'<sup>'+e+'</sup>');
+  // ** operator
+  s = s.replace(/\*\*(\S+)/g, (_,e)=>'<sup>'+e+'</sup>');
+  // exp(x) → e^x
+  s = s.replace(/\bexp\(([^)]+)\)/g, 'e<sup>$1</sup>');
+  // log/ln
+  s = s.replace(/\bln\b/g,'ln').replace(/\blog2\b/g,'log₂').replace(/\blog10\b/g,'log₁₀');
+  return '<span style="font-family:\'STIX Two Math\',\'Times New Roman\',serif">' + s + '</span>';
+}
+
+function updateFnPreview(expr) {
+  const el = document.getElementById('fn-preview');
+  if (!el) return;
+  const trimmed = (expr||'').trim();
+  if (!trimmed) {
+    el.innerHTML = '<em style="opacity:.5;font-style:italic;font-family:sans-serif;font-size:13px">f(x) = …</em>';
+    return;
+  }
+  try {
+    el.innerHTML = 'f(x) = ' + _mathRender(trimmed);
+  } catch(e) {
+    el.innerHTML = '<span style="opacity:.6;font-size:12px">' + trimmed + '</span>';
+  }
+}
+
+function drawFunction() {
+  if (!board) { alert('画板未初始化'); return; }
+  const raw = (document.getElementById('fn-expr').value || '').trim();
+  if (!raw) {
+    document.getElementById('fn-stat').textContent = '请输入函数表达式';
+    return;
+  }
+  const parsed = parseFnExpr(raw);
+  // Get range from selector
+  const rangeStr = (document.getElementById('fn-range-sel')?.value || '-12,12');
+  const [rMin, rMax] = rangeStr.split(',').map(Number);
+  // Get color override
+  const colorSel = document.getElementById('fn-color-sel')?.value;
+  const drawColor = colorSel || _color;
+  try {
+    const testFn = new Function('x', '"use strict"; return (' + parsed + ');');
+    testFn(1); // syntax check
+    const safeFn = function(x) {
+      try { const v = testFn(x); return isFinite(v) ? v : NaN; }
+      catch(e) { return NaN; }
+    };
+    const el = board.create('functiongraph', [safeFn, rMin, rMax], {
+      strokeColor: drawColor, strokeWidth: _sw, dash: _dash
+    });
+    el._gb = 'functiongraph';
+    el._fnExpr = raw;
+    pushUndo(() => rmEl(el));
+    hookEl(el); updateCount(); board.update();
+    document.getElementById('fn-stat').textContent = '✓ 已绘制: ' + raw;
+  } catch(e) {
+    document.getElementById('fn-stat').textContent = '⚠ 解析错误: ' + e.message;
+  }
+}
+
+function drawParametric() {
+  if (!board) return;
+  const xt = prompt('x(t) =', 'cos(t)');
+  if (!xt) return;
+  const yt = prompt('y(t) =', 'sin(t)');
+  if (!yt) return;
+  const tRange = prompt('t 范围 (如 0,6.28318)', '0,6.28318');
+  if (!tRange) return;
+  const [tMin, tMax] = tRange.split(',').map(Number);
+  if (!isFinite(tMin) || !isFinite(tMax)) { alert('t 范围无效'); return; }
+  const colorSel = document.getElementById('fn-color-sel')?.value;
+  const drawColor = colorSel || _color;
+  try {
+    const xFn = new Function('t', '"use strict"; const Math_sin=Math.sin,Math_cos=Math.cos,Math_sqrt=Math.sqrt,Math_PI=Math.PI,Math_abs=Math.abs,Math_exp=Math.exp,Math_log=Math.log,Math_tan=Math.tan; return (' + parseFnExpr(xt).replace(/\bx\b/g,'t') + ');');
+    const yFn = new Function('t', '"use strict"; const Math_sin=Math.sin,Math_cos=Math.cos,Math_sqrt=Math.sqrt,Math_PI=Math.PI,Math_abs=Math.abs,Math_exp=Math.exp,Math_log=Math.log,Math_tan=Math.tan; return (' + parseFnExpr(yt).replace(/\bx\b/g,'t') + ');');
+    const el = board.create('curve', [
+      t => { try { const v=xFn(t); return isFinite(v)?v:NaN; } catch(_){return NaN;} },
+      t => { try { const v=yFn(t); return isFinite(v)?v:NaN; } catch(_){return NaN;} },
+      tMin, tMax
+    ], { strokeColor: drawColor, strokeWidth: _sw, dash: _dash });
+    el._gb = 'parametric';
+    pushUndo(() => rmEl(el));
+    hookEl(el); updateCount(); board.update();
+    document.getElementById('fn-stat').textContent = `✓ 参数曲线 x=${xt}, y=${yt}`;
+  } catch(e) {
+    document.getElementById('fn-stat').textContent = '⚠ ' + e.message;
+  }
+}
+
+function drawPolar() {
+  if (!board) return;
+  const r = prompt('r(θ) =', '2+2*cos(x)');
+  if (!r) return;
+  const tRange = prompt('θ 范围 (如 0,6.28318)', '0,6.28318');
+  if (!tRange) return;
+  const [tMin, tMax] = tRange.split(',').map(Number);
+  if (!isFinite(tMin) || !isFinite(tMax)) { alert('θ 范围无效'); return; }
+  const colorSel = document.getElementById('fn-color-sel')?.value;
+  const drawColor = colorSel || _color;
+  try {
+    const rFn = new Function('x', '"use strict"; return (' + parseFnExpr(r) + ');');
+    const el = board.create('curve', [
+      t => { try { const rv=rFn(t); return isFinite(rv)?rv*Math.cos(t):NaN; } catch(_){return NaN;} },
+      t => { try { const rv=rFn(t); return isFinite(rv)?rv*Math.sin(t):NaN; } catch(_){return NaN;} },
+      tMin, tMax
+    ], { strokeColor: drawColor, strokeWidth: _sw, dash: _dash });
+    el._gb = 'polar';
+    pushUndo(() => rmEl(el));
+    hookEl(el); updateCount(); board.update();
+    document.getElementById('fn-stat').textContent = `✓ 极坐标曲线 r=${r}`;
+  } catch(e) {
+    document.getElementById('fn-stat').textContent = '⚠ ' + e.message;
+  }
+}
+
+function rmEl(el) {
+  try { board.removeObject(el, true); } catch(e) {}
+  board.update();
+  updateCount();
+}
+
+function updateCount() {
+  let n = 0;
+  for (const id in board.objects) {
+    const o = board.objects[id];
+    if (o._gb) n++;
+  }
+  document.getElementById('status-count').textContent = n ? `已绘制 ${n} 个对象` : '';
+}
+
+// ─────────────────────────────────────────────
+//  Object click handler
+// ─────────────────────────────────────────────
+let lastObjDown = null;  // set by object handlers so board handler can read
+
+function hookEl(el) {
+  el.on('down', (evt) => {
+    lastObjDown = el;
+    if (tool === 'erase') {
+      rmEl(el); selectedEls.delete(el); updatePropsPanel(null);
+      JXG.stopPropagation(evt);
+      return;
+    }
+    if (tool === 'move') {
+      // Ctrl/Meta+Click → multi-select
+      const nativeEvt = evt.originalEvent || evt;
+      if (nativeEvt && (nativeEvt.ctrlKey || nativeEvt.metaKey)) {
+        if (selectedEls.has(el)) {
+          selectedEls.delete(el);
+          try { el.setAttribute({ strokeOpacity: 1, fillOpacity: el._savedFO || 0 }); } catch(_){}
+        } else {
+          selectedEls.add(el);
+          el._savedFO = el.visProp?.fillopacity || 0;
+          try { el.setAttribute({ strokeOpacity: 0.55 }); } catch(_){}
+        }
+        updateMultiSelStatus();
+        JXG.stopPropagation(evt);
+        return;
+      }
+      // Normal click → single select + show ctx menu
+      clearMultiSel();
+      selectEl(el);
+      showCtxMenu(el, nativeEvt);
+      JXG.stopPropagation(evt);
+      return;
+    }
+    // For construction tools that need to pick an existing line/point:
+    if (tool === 'perpendicular' || tool === 'parallel') {
+      if (el.type === JXG.OBJECT_TYPE_LINE) {
+        ts.ln = el;
+        hint('点击一个点，过该点作' + (tool === 'perpendicular' ? '垂线' : '平行线'));
+        JXG.stopPropagation(evt);
+        return;
+      }
+    }
+  });
+}
+
+// ─────────────────────────────────────────────
+//  Board event handlers
+// ─────────────────────────────────────────────
+let _dblGuard = false;
+
+function onMove(evt) {
+  const c = board.getUsrCoordsOfMouse(evt);
+  if (c) document.getElementById('status-coords').textContent =
+    `x = ${c[0].toFixed(2)},  y = ${c[1].toFixed(2)}`;
+}
+
+function onDown(evt) {
+  if (_dblGuard) return;
+  const c = board.getUsrCoordsOfMouse(evt);
+  if (!c) return;
+  const [x, y] = c;
+
+  if (tool === 'move') { selectEl(null); return; }
+
+  // Small delay so lastObjDown is set by object handler if fired first
+  setTimeout(() => {
+    dispatchTool(x, y, evt);
+    lastObjDown = null;
+  }, 0);
+}
+
+function onDblClick(evt) {
+  if (tool === 'polygon' && polyPts.length >= 3) {
+    finishPoly();
+    _dblGuard = true;
+    setTimeout(() => { _dblGuard = false; }, 250);
+  }
+}
+
+function dispatchTool(x, y, evt) {
+  const snap = snapPt(x, y);
+
+  switch (tool) {
+    case 'point': {
+      if (!snap) mkPoint(x, y);
+      break;
+    }
+    case 'segment': case 'line': case 'ray': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1) {
+        ts.p1 = p;
+        hint(tool === 'segment' ? '点击第二个端点' : tool === 'line' ? '点击第二个点确定直线' : '点击射线方向上的点');
+      } else {
+        if (tool === 'segment') mkSeg(ts.p1, p);
+        else if (tool === 'line') mkLine(ts.p1, p);
+        else mkRay(ts.p1, p);
+        ts.p1 = null;
+        hint(HINTS[tool]);
+      }
+      break;
+    }
+    case 'circle': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.ctr) { ts.ctr = p; hint('点击圆上任意一点确定半径'); }
+      else { mkCircle(ts.ctr, p); ts.ctr = null; hint(HINTS.circle); }
+      break;
+    }
+    case 'arc': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1) { ts.p1 = p; hint('点击弧的起点'); }
+      else if (!ts.p2) { ts.p2 = p; hint('点击弧的终点'); }
+      else { mkArc(ts.p1, ts.p2, p); ts.p1 = ts.p2 = null; hint(HINTS.arc); }
+      break;
+    }
+    case 'polygon': {
+      const p = snap || mkPoint(x, y);
+      polyPts.push(p);
+      hint(`已选 ${polyPts.length} 个顶点 — 继续点击或双击/Enter 完成`);
+      break;
+    }
+    case 'midpoint': {
+      if (!snap) { hint('请点击一个已有点'); return; }
+      if (!ts.p1) { ts.p1 = snap; hint('点击第二个点'); }
+      else { mkMidpoint(ts.p1, snap); ts.p1 = null; hint(HINTS.midpoint); }
+      break;
+    }
+    case 'angle': case 'rightangle': {
+      if (!snap) { hint('请点击一个已有点'); return; }
+      if (!ts.p1) { ts.p1 = snap; hint('点击顶点（第 2 点）'); }
+      else if (!ts.p2) { ts.p2 = snap; hint('点击另一边上的点（第 3 点）'); }
+      else { mkAngle(ts.p1, ts.p2, snap, tool === 'rightangle'); ts.p1 = ts.p2 = null; hint(HINTS[tool]); }
+      break;
+    }
+    case 'perpendicular': case 'parallel': {
+      if (ts.ln) {
+        const p = snap || mkPoint(x, y);
+        if (tool === 'perpendicular') mkPerp(p, ts.ln);
+        else mkParallel(p, ts.ln);
+        ts.ln = null; hint(HINTS[tool]);
+      }
+      // else: waiting for line click (handled in hookEl)
+      break;
+    }
+    case 'text': {
+      const txt = prompt('请输入文字标注：', '');
+      if (txt && txt.trim()) mkText(x, y, txt.trim());
+      break;
+    }
+
+    case 'vector': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1) { ts.p1 = p; hint('点击向量终点（箭头方向）'); }
+      else { mkVector(ts.p1, p); ts.p1 = null; hint(HINTS.vector); }
+      break;
+    }
+    case 'ellipse': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1)       { ts.p1 = p; hint('点击第二个焦点'); }
+      else if (!ts.p2)  { ts.p2 = p; hint('点击椭圆上任意一点'); }
+      else { mkEllipse(ts.p1, ts.p2, p); ts.p1 = ts.p2 = null; hint(HINTS.ellipse); }
+      break;
+    }
+    case 'circle3pt': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1)       { ts.p1 = p; hint('点击第二个点'); }
+      else if (!ts.p2)  { ts.p2 = p; hint('点击第三个点（确定圆）'); }
+      else { mkCircle3(ts.p1, ts.p2, p); ts.p1 = ts.p2 = null; hint(HINTS.circle3pt); }
+      break;
+    }
+    case 'regpoly': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1) { ts.p1 = p; hint('点击第二个顶点'); }
+      else {
+        const n = parseInt(prompt('输入正多边形边数（3~20）:', '6'));
+        if (n >= 3 && n <= 20) mkRegPoly(ts.p1, p, n);
+        ts.p1 = null; hint(HINTS.regpoly);
+      }
+      break;
+    }
+    case 'bisector': {
+      if (!snap) { hint('请点击已有点'); return; }
+      if (!ts.p1)       { ts.p1 = snap; hint('点击角的另一边上的点'); }
+      else if (!ts.p2)  { ts.p2 = snap; hint('再点击第三个点'); }
+      else { mkBisector(ts.p1, ts.p2, snap); ts.p1 = ts.p2 = null; hint(HINTS.bisector); }
+      break;
+    }
+    case 'erase': {
+      // Handled by object hookEl; board click means empty area
+      break;
+    }
+
+    case 'rectangle': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1) { ts.p1 = { x, y }; hint('点击对角顶点确定矩形'); }
+      else { mkRectangle(ts.p1.x, ts.p1.y, x, y); ts.p1 = null; hint(HINTS.rectangle); }
+      break;
+    }
+    case 'rhombus': {
+      if (!ts.p1) { ts.p1 = { x, y }; hint('点击一个顶点确定菱形大小'); }
+      else {
+        const r = Math.sqrt((x - ts.p1.x) ** 2 + (y - ts.p1.y) ** 2);
+        mkRhombus(ts.p1.x, ts.p1.y, r);
+        ts.p1 = null; hint(HINTS.rhombus);
+      }
+      break;
+    }
+    case 'trapezoid': {
+      if (!ts.p1) { ts.p1 = { x, y }; hint('点击另一端确定梯形底边'); }
+      else {
+        const botW = Math.abs(x - ts.p1.x) * 2 || 4;
+        mkTrapezoid((ts.p1.x + x) / 2, Math.min(ts.p1.y, y), botW * 0.6, botW, Math.abs(y - ts.p1.y) || 3);
+        ts.p1 = null; hint(HINTS.trapezoid);
+      }
+      break;
+    }
+    case 'parabola': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1) { ts.p1 = p; hint('点击抛物线顶点'); }
+      else { mkParabola(ts.p1, p); ts.p1 = null; hint(HINTS.parabola); }
+      break;
+    }
+    case 'hyperbola': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1)      { ts.p1 = p; hint('点击第二个焦点'); }
+      else if (!ts.p2) { ts.p2 = p; hint('点击双曲线上的一点'); }
+      else { mkHyperbola(ts.p1, ts.p2, p); ts.p1 = ts.p2 = null; hint(HINTS.hyperbola); }
+      break;
+    }
+    case 'vector-coord': {
+      const p = snap || mkPoint(x, y);
+      if (!ts.p1) { ts.p1 = p; hint('点击向量终点'); }
+      else { mkVectorCoord(ts.p1, p); ts.p1 = null; hint(HINTS['vector-coord']); }
+      break;
+    }
+    case 'intersection': {
+      if (!ts.el1) {
+        if (lastObjDown && (lastObjDown.type === JXG.OBJECT_TYPE_LINE || lastObjDown.type === JXG.OBJECT_TYPE_CIRCLE || lastObjDown._gb === 'functiongraph')) {
+          ts.el1 = lastObjDown; hint('再点击第二条线/圆');
+        } else { hint('请点击一条线或圆'); }
+      } else {
+        if (lastObjDown && lastObjDown !== ts.el1) {
+          mkIntersection(ts.el1, lastObjDown); ts.el1 = null; hint(HINTS.intersection);
+        }
+      }
+      break;
+    }
+    case 'tangent': {
+      if (!ts.curve) {
+        if (lastObjDown && (lastObjDown.type === JXG.OBJECT_TYPE_CIRCLE || lastObjDown._gb === 'functiongraph' || lastObjDown._gb === 'parabola')) {
+          ts.curve = lastObjDown; hint('再点击切点（已有点或新建）');
+        } else { hint('请先点击一条曲线或圆'); }
+      } else {
+        const p = snap || mkPoint(x, y);
+        mkTangentAtPoint(ts.curve, p); ts.curve = null; hint(HINTS.tangent);
+      }
+      break;
+    }
+  }
+}
+
+function finishPoly() {
+  if (polyPts.length >= 3) mkPolygon([...polyPts]);
+  polyPts = [];
+  hint(HINTS.polygon);
+}
+
+// ─────────────────────────────────────────────
+//  Tool switching
+// ─────────────────────────────────────────────
+function setTool(name) {
+  ts = {};
+  polyPts = [];
+  tool = name;
+  document.querySelectorAll('.t-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tool === name));
+  hint(HINTS[name] || '');
+  board.options.pan.enabled = (name === 'move');
+  board.update();
+}
+
+function hint(msg) {
+  document.getElementById('status-hint').textContent = msg;
+}
+
+
+// ─────────────────────────────────────────────
+//  多选 & 上下文菜单
+// ─────────────────────────────────────────────
+function clearMultiSel() {
+  selectedEls.forEach(el => {
+    try { el.setAttribute({ strokeOpacity: 1, fillOpacity: el._savedFO || 0 }); } catch(_){}
+  });
+  selectedEls.clear();
+  updateMultiSelStatus();
+}
+
+function updateMultiSelStatus() {
+  const n = selectedEls.size;
+  const el = document.getElementById('status-count');
+  if (n > 1) {
+    el.innerHTML = `<span class="multi-sel-count">已选中 ${n} 个对象</span>`;
+  } else {
+    let total = 0;
+    for (const id in board.objects) { if (board.objects[id]._gb) total++; }
+    el.textContent = total ? `已绘制 ${total} 个对象` : '';
+  }
+}
+
+function showCtxMenu(el, evt) {
+  const menu = document.getElementById('ctx-menu');
+  if (!el || !menu) return;
+  // Populate color swatches
+  const colDiv = document.getElementById('ctx-colors');
+  colDiv.innerHTML = PALETTE.map(c =>
+    `<div class="cswatch" style="background:${c};width:16px;height:16px;border-radius:50%;cursor:pointer;border:2px solid transparent"
+      onclick="ctxSetColor('${c}')"></div>`).join('');
+  // Toggle fix/unfix text
+  const fixItem = document.getElementById('ctx-fix');
+  const renameItem = document.getElementById('ctx-rename');
+  fixItem.style.display = (el.type === JXG.OBJECT_TYPE_POINT) ? '' : 'none';
+  renameItem.style.display = (el.name !== undefined) ? '' : 'none';
+  if (fixItem.style.display !== 'none') {
+    fixItem.textContent = el.visProp?.fixed ? '📌 取消固定' : '📌 固定点';
+  }
+  // Position menu near cursor
+  const x = evt ? (evt.clientX || evt.touches?.[0]?.clientX || 0) : 0;
+  const y = evt ? (evt.clientY || evt.touches?.[0]?.clientY || 0) : 0;
+  menu.style.left = Math.min(x + 8, window.innerWidth - 160) + 'px';
+  menu.style.top  = Math.min(y + 8, window.innerHeight - 180) + 'px';
+  menu.classList.add('show');
+  window._ctxTarget = el;
+  // Auto-close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', closeCtxMenu, { once: true });
+  }, 0);
+}
+
+function closeCtxMenu() {
+  const menu = document.getElementById('ctx-menu');
+  if (menu) menu.classList.remove('show');
+}
+
+function ctxRename() {
+  closeCtxMenu();
+  const el = window._ctxTarget;
+  if (!el) return;
+  const n = prompt('输入新名称：', el.name || '');
+  if (n !== null) {
+    freeName(el.name || '');
+    el.name = n;
+    if (el.label) { try { el.label.setText(n); } catch(_){} }
+    board.update();
+    updatePropsPanel(el);
+  }
+}
+
+function ctxFix() {
+  closeCtxMenu();
+  const el = window._ctxTarget;
+  if (!el) return;
+  const newFixed = !el.visProp?.fixed;
+  el.setAttribute({ fixed: newFixed });
+  board.update();
+  updatePropsPanel(el);
+}
+
+function ctxSetColor(c) {
+  closeCtxMenu();
+  const el = window._ctxTarget;
+  if (!el) return;
+  setCurrentColor(c);
+  el.setAttribute({ strokeColor: c, fillColor: c });
+  if (el.label) { try { el.label.setAttribute({ strokeColor: c }); } catch(_){} }
+  board.update();
+  updatePropsPanel(el);
+}
+
+function ctxDelete() {
+  closeCtxMenu();
+  const el = window._ctxTarget;
+  if (!el) return;
+  rmEl(el);
+  updatePropsPanel(null);
+}
+
+// ─────────────────────────────────────────────
+//  Selection & Properties
+// ─────────────────────────────────────────────
+function selectEl(el) {
+  selectedEl = el;
+  updatePropsPanel(el);
+}
+
+function updatePropsPanel(el) {
+  selectedEl = el;
+  const empty   = document.getElementById('props-empty');
+  const content = document.getElementById('props-content');
+  if (!el) { empty.style.display = 'flex'; content.style.display = 'none'; return; }
+  empty.style.display = 'none'; content.style.display = 'block';
+
+  const type = el._gb || el.elType || '?';
+  const sc   = el.visProp?.strokecolor || '#1e293b';
+  const sw   = el.visProp?.strokewidth || 2;
+  const dash = el.visProp?.dash || 0;
+  const fc   = el.visProp?.fillcolor || 'none';
+  const fo   = el.visProp?.fillopacity || 0;
+  const vis  = el.visProp?.visible !== false;
+
+  const swatches = PALETTE.map(c =>
+    `<div class="cswatch${sc===c?' active':''}" style="background:${c}"
+      onclick="setColor('${c}')" title="${c}"></div>`).join('');
+
+  const hasLabel = el.label || el.name !== undefined;
+  const isPoint  = type === 'point';
+
+  content.innerHTML = `
+    <div class="psec">
+      <div class="psec-title">类型：${type}</div>
+      ${hasLabel ? `<div class="prow"><div class="plabel">名称/标签</div>
+        <input class="pinput" value="${escHtml(String(el.name||''))}" onchange="setElName(this.value)" /></div>` : ''}
+    </div>
+    <div class="psec">
+      <div class="psec-title">样式</div>
+      <div class="prow"><div class="plabel">颜色</div><div class="colors">${swatches}</div></div>
+      <div class="prow"><div class="plabel">线宽 (${sw}px)</div>
+        <input type="range" class="prange" min="1" max="7" step="0.5" value="${sw}" oninput="setElSW(+this.value)" /></div>
+      <div class="prow"><div class="plabel">线型</div>
+        <select class="pselect" onchange="setElDash(+this.value)">
+          <option value="0"${dash===0?' selected':''}>实线</option>
+          <option value="2"${dash===2?' selected':''}>虚线</option>
+          <option value="3"${dash===3?' selected':''}>点线</option>
+        </select></div>
+      ${!isPoint ? `<div class="prow"><div class="plabel">填充透明度 (${Math.round(fo*100)}%)</div>
+        <input type="range" class="prange" min="0" max="1" step="0.05" value="${fo}" oninput="setElFO(+this.value)" />
+        </div>` : ''}
+    </div>
+    <div class="psec">
+      <div class="psec-title">可见性</div>
+      <label class="pcheck"><input type="checkbox" ${vis?'checked':''} onchange="setElVis(this.checked)" />显示对象</label>
+      ${el.label ? `<label class="pcheck" style="margin-top:4px">
+        <input type="checkbox" ${el.label.visProp?.visible!==false?'checked':''} onchange="setElLblVis(this.checked)" />显示标签</label>` : ''}
+    </div>
+    <div style="padding:8px 12px">
+      ${isPoint ? `<div class="prow"><div class="plabel">位置</div>
+        <div style="display:flex;gap:4px">
+          <input class="pinput" style="flex:1" type="number" step="0.5" value="${el.X ? el.X().toFixed(2) : ''}" placeholder="x" onchange="setElX(+this.value)" />
+          <input class="pinput" style="flex:1" type="number" step="0.5" value="${el.Y ? el.Y().toFixed(2) : ''}" placeholder="y" onchange="setElY(+this.value)" />
+        </div></div>` : ''}
+      <button class="pdel" onclick="delSel()">🗑 删除此对象</button>
+    </div>
+  `;
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function setColor(c)       { if (!selectedEl) return; selectedEl.setAttribute({ strokeColor: c, fillColor: c }); if (selectedEl.label) selectedEl.label.setAttribute({ strokeColor: c }); board.update(); updatePropsPanel(selectedEl); }
+function setElName(n)      { if (!selectedEl) return; freeName(selectedEl.name||''); selectedEl.name = n; if (selectedEl.label) selectedEl.label.setText(n); board.update(); }
+function setElSW(w)        { if (!selectedEl) return; selectedEl.setAttribute({ strokeWidth: w }); board.update(); }
+function setElDash(d)      { if (!selectedEl) return; selectedEl.setAttribute({ dash: d }); board.update(); }
+function setElFO(o)        { if (!selectedEl) return; selectedEl.setAttribute({ fillOpacity: o }); board.update(); }
+function setElVis(v)       { if (!selectedEl) return; selectedEl.setAttribute({ visible: v }); board.update(); }
+function setElLblVis(v)    { if (!selectedEl?.label) return; selectedEl.label.setAttribute({ visible: v }); board.update(); }
+function setElX(x)         { if (!selectedEl || selectedEl.type !== JXG.OBJECT_TYPE_POINT) return; selectedEl.setPosition(JXG.COORDS_BY_USER, [x, selectedEl.Y()]); board.update(); }
+function setElY(y)         { if (!selectedEl || selectedEl.type !== JXG.OBJECT_TYPE_POINT) return; selectedEl.setPosition(JXG.COORDS_BY_USER, [selectedEl.X(), y]); board.update(); }
+function delSel() {
+  if (selectedEls.size > 1) {
+    if (!confirm(`删除选中的 ${selectedEls.size} 个对象？`)) return;
+    selectedEls.forEach(el => { try { rmEl(el); } catch(_){} });
+    selectedEls.clear();
+    updatePropsPanel(null);
+    return;
+  }
+  if (!selectedEl) return;
+  rmEl(selectedEl);
+  updatePropsPanel(null);
+}
+
+// ─────────────────────────────────────────────
+//  Global color / dash presets
+// ─────────────────────────────────────────────
+function setCurrentColor(c) {
+  _color = c;
+  document.getElementById('cur-color-label').textContent = c;
+  document.querySelectorAll('.sidebar .cswatch').forEach(sw =>
+    sw.style.borderColor = sw.getAttribute('onclick').includes(c) ? '#fff' : 'transparent');
+}
+function setCurrentDash(d) { _dash = d; }
+
+// ─────────────────────────────────────────────
+//  Board controls
+// ─────────────────────────────────────────────
+function toggleAxis() {
+  showAxis = !showAxis;
+  if (board.defaultAxes) {
+    board.defaultAxes.x.setAttribute({ visible: showAxis });
+    board.defaultAxes.y.setAttribute({ visible: showAxis });
+  }
+  document.getElementById('btn-axis').textContent = `坐标轴 ${showAxis?'✓':'✗'}`;
+  board.update();
+}
+function toggleGrid() {
+  showGrid = !showGrid;
+  if (board.grids?.length) board.grids.forEach(g => g.setAttribute({ visible: showGrid }));
+  document.getElementById('btn-grid').textContent = `网格 ${showGrid?'✓':'✗'}`;
+  board.update();
+}
+function zoomIn()    { board.zoomIn(0, 0); }
+function zoomOut()   { board.zoomOut(0, 0); }
+function zoomReset() { board.setBoundingBox([-8,8,8,-8], true); board.update(); }
+function clearAll() {
+  if (!confirm('确认清空画板？此操作不可撤销。')) return;
+  try { JXG.JSXGraph.freeBoard(board); } catch(_) {}
+  board = null;
+  const box = document.getElementById('jxgbox');
+  box.innerHTML = '';  // force-clear any leftover DOM
+  undoStack = []; redoStack = [];
+  _nameIdx = 0; _usedNames.clear(); polyPts = [];
+  selectedEls.clear(); window._ctxTarget = null;
+  ts = {};  // reset tool state
+  initBoard();
+  requestAnimationFrame(() => {
+    if (board) {
+      board.resizeContainer(box.offsetWidth, box.offsetHeight);
+      board.fullUpdate();
+    }
+  });
+  setTool('move');
+  window.board = board;
+  updateUndoBtns(); updatePropsPanel(null);
+  updateCount();
+}
+
+// ─────────────────────────────────────────────
+//  Export
+// ─────────────────────────────────────────────
+function getSVGString() {
+  const svgEl = document.querySelector('#jxgbox svg');
+  if (!svgEl) return null;
+  const clone = svgEl.cloneNode(true);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  bg.setAttribute('width', '100%'); bg.setAttribute('height', '100%'); bg.setAttribute('fill', 'white');
+  clone.insertBefore(bg, clone.firstChild);
+  return new XMLSerializer().serializeToString(clone);
+}
+
+function exportSVG() {
+  const s = getSVGString(); if (!s) return;
+  const a = document.createElement('a');
+  a.download = `geometry_${TID||'draft'}.svg`;
+  a.href = URL.createObjectURL(new Blob([s], { type: 'image/svg+xml' }));
+  a.click();
+}
+
+function exportPNG() {
+  const svgEl = document.querySelector('#jxgbox svg');
+  if (!svgEl) return;
+  const w = svgEl.clientWidth || 800, h = svgEl.clientHeight || 600;
+  const s = getSVGString();
+  const blob = new Blob([s], { type: 'image/svg+xml' });
+  const url  = URL.createObjectURL(blob);
+  const img  = new Image();
+  img.onload = () => {
+    const cv = document.createElement('canvas');
+    cv.width = w * 2; cv.height = h * 2;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = 'white'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(url);
+    const a = document.createElement('a');
+    a.download = `geometry_${TID||'draft'}.png`;
+    a.href = cv.toDataURL('image/png');
+    a.click();
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); alert('PNG 导出失败，请改用 SVG 格式'); };
+  img.src = url;
+}
+
+// 上传 PNG 到当前题目的图片库
+async function uploadToTriplet() {
+  if (!TID) return;
+  const svgEl = document.querySelector('#jxgbox svg');
+  if (!svgEl) return;
+  const w = svgEl.clientWidth || 800, h = svgEl.clientHeight || 600;
+  const s = getSVGString();
+  const blob = new Blob([s], { type: 'image/svg+xml' });
+  const url  = URL.createObjectURL(blob);
+  const img  = new Image();
+  img.onload = async () => {
+    const cv = document.createElement('canvas');
+    cv.width = w * 2; cv.height = h * 2;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = 'white'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(url);
+    cv.toBlob(async (pngBlob) => {
+      const fd = new FormData();
+      fd.append('file', pngBlob, `geometry_${TID}_${Date.now()}.png`);
+      const r = await fetch(`${API}/api/triplets/${TID}/images`, { method: 'POST', body: fd });
+      if (r.ok) alert(`✅ 已上传到题目 ${TID} 的图片库`);
+      else alert('上传失败，请检查服务端是否运行');
+    }, 'image/png');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); alert('上传失败'); };
+  img.src = url;
+}
+
+// ─────────────────────────────────────────────
+//  Keyboard
+// ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+  // Ctrl+A → select all
+  if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase() === 'a') {
+    e.preventDefault();
+    clearMultiSel();
+    for (const id in board.objects) {
+      const o = board.objects[id];
+      if (o._gb) {
+        selectedEls.add(o); o._savedFO = o.visProp?.fillopacity || 0;
+        try { o.setAttribute({ strokeOpacity: 0.55 }); } catch(_){}
+      }
+    }
+    updateMultiSelStatus(); return;
+  }
+  // Escape → clear state
+  if (e.key === 'Escape') {
+    ts = {}; polyPts = []; setTool('move');
+    clearMultiSel(); closeCtxMenu(); return;
+  }
+  if (e.key === 'Enter' && tool === 'polygon' && polyPts.length >= 3) { finishPoly(); return; }
+  // Delete/Backspace → delete selected
+  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); delSel(); return; }
+  const km = { v:'move', e:'erase', p:'point', s:'segment', l:'line',
+               r:'ray', c:'circle', g:'polygon', m:'midpoint', t:'text', w:'vector' };
+  if (!e.ctrlKey && !e.metaKey && km[e.key]) setTool(km[e.key]);
+});
+
+// ─────────────────────────────────────────────
+//  Load question (if tid passed)
+// ─────────────────────────────────────────────
+function goBack() {
+  if (window.opener) { window.opener.focus(); window.close(); }
+  else history.back();
+}
+
+// ─────────────────────────────────────────────
+//  AI Drawing Assistant
+// ─────────────────────────────────────────────
+const AI_EXAMPLES = [
+  '等边三角形，边长4，标注3个内角',
+  '直角梯形ABCD，标注直角',
+  '两个相交圆，标注交点',
+  '平行四边形，对角线画虚线',
+  '单位圆，标注π/6和π/3处的点',
+  '圆内接三角形，标注圆心角',
+  '任意三角形的角平分线',
+  '相似三角形，比例1:2',
+];
+
+(function initAIChips() {
+  const chips = document.getElementById('ai-chips');
+  AI_EXAMPLES.forEach(ex => {
+    const c = document.createElement('span');
+    c.className = 'ai-chip'; c.textContent = ex;
+    c.onclick = () => { document.getElementById('ai-prompt').value = ex; };
+    chips.appendChild(c);
+  });
+})();
+
+// ─── AI Tab switching ────────────────────────────────
+function switchAITab(tab) {
+  ['draw','beautify','connect','export','quiz','handwrite'].forEach(t => {
+    const el = document.getElementById('ai-tab-'+t);
+    if (el) el.style.display = t===tab ? '' : 'none';
+  });
+  document.querySelectorAll('.ai-tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+}
+
+// ─── Load AI config from localStorage ────────────────
+function getActiveAIConfig() {
+  return {
+    endpoint: localStorage.getItem('ai_endpoint') || 'https://api.openai.com/v1',
+    key:      localStorage.getItem('ai_key') || '',
+    model:    localStorage.getItem('ai_model') || 'gpt-4o-mini'
+  };
+}
+
+function loadAIConfig() {
+  const id   = localStorage.getItem('ai_active_id') || '';
+  const tag  = document.getElementById('ai-provider-tag');
+  const names = {openai:'OpenAI',deepseek:'DeepSeek',kimi:'Kimi',qwen:'通义千问',
+                 zhipu:'智谱 GLM',ernie:'百度文心',ollama:'Ollama',lmstudio:'LM Studio'};
+  if (tag) tag.textContent = id ? (names[id] || id) : '未配置';
+  // show send btn if TID exists
+  const tid = new URLSearchParams(location.search).get('tid');
+  const sb = document.getElementById('export-send-btn');
+  if (sb) sb.style.display = tid ? 'inline-flex' : 'none';
+}
+
+// ─── Toggle AI panel ─────────────────────────────────
+function toggleAIPanel() {
+  const p = document.getElementById('ai-panel');
+  p.classList.toggle('open');
+  if (p.classList.contains('open')) loadAIConfig();
+  // Resize the JSXGraph board after CSS transition (0.28s) completes
+  setTimeout(() => {
+    if (board) { try { board.resizeContainer(
+      document.getElementById('jxgbox').offsetWidth,
+      document.getElementById('jxgbox').offsetHeight, true); board.fullUpdate(); } catch(_){} }
+    if (renderer3d && is3DMode) _resize3D();
+  }, 320);
+}
+
+// ─── Shared AI call ───────────────────────────────────
+async function callAI(systemPrompt, userMsg, statId, btnId) {
+  const cfg = getActiveAIConfig();
+  if (!cfg.key) {
+    setAIStat(statId, 'err', '未配置 API Key，请先前往 ⚙️ 配置 AI');
+    return null;
+  }
+  const btn = btnId ? document.getElementById(btnId) : null;
+  if (btn) { btn._orig = btn.textContent; btn.textContent = '⏳ 生成中…'; btn.disabled = true; }
+  setAIStat(statId, 'loading', '正在调用 AI…');
+  try {
+    const resp = await fetch(cfg.endpoint.replace(/\/+$/, '') + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [ { role:'system', content: systemPrompt }, { role:'user', content: userMsg } ],
+        temperature: 0.2
+      })
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const raw = data.choices?.[0]?.message?.content || '';
+    setAIStat(statId, 'ok', '✓ 生成成功');
+    return raw;
+  } catch(e) {
+    setAIStat(statId, 'err', '❌ ' + e.message);
+    return null;
+  } finally {
+    if (btn) { btn.textContent = btn._orig; btn.disabled = false; }
+  }
+}
+
+function setAIStat(id, cls, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'ai-stat ' + (cls||'');
+  el.textContent = msg;
+}
+
+// ─── Board state description ──────────────────────────
+function getBoardStateDescription() {
+  if (!board) return '(空画板)';
+  const lines = [];
+  board.objectsList.forEach(o => {
+    if (o.type === JXG.OBJECT_TYPE_POINT)
+      lines.push('Point ' + o.name + ' at (' + o.X().toFixed(2) + ', ' + o.Y().toFixed(2) + ')');
+    else if (o.type === JXG.OBJECT_TYPE_LINE)
+      lines.push('Line/Segment ' + o.name);
+    else if (o.type === JXG.OBJECT_TYPE_CIRCLE)
+      lines.push('Circle ' + o.name);
+    else if (o.type === JXG.OBJECT_TYPE_POLYGON)
+      lines.push('Polygon ' + o.name);
+  });
+  return lines.length ? lines.join('\n') : '(画板为空)';
+}
+
+// ─── AI Generate (Draw tab) ───────────────────────────
+const AI_SYSTEM = `你是专业数学几何绘图助手，专门生成 JSXGraph JS 代码。
+规则：
+1. 变量名用 p1/p2/seg1/circ1 等，不要 let/const/var（直接赋值）
+2. 通过全局变量 board 操作，调用 board.create(...)
+3. 不要 import/require，不要 initBoard
+4. 只返回纯 JS 代码，不要 markdown 代码块
+5. 坐标系范围约 -10 到 10
+示例：
+p1 = board.create('point',[0,0],{name:'A',fixed:false});
+p2 = board.create('point',[3,4],{name:'B'});
+seg1 = board.create('segment',[p1,p2],{strokeColor:'#3b82f6',strokeWidth:2});`;
+
+async function aiGenerate() {
+  const prompt = document.getElementById('ai-prompt').value.trim();
+  if (!prompt) { setAIStat('ai-stat','err','请输入图形描述'); return; }
+  const raw = await callAI(AI_SYSTEM, prompt, 'ai-stat', 'ai-btn-gen');
+  if (raw) {
+    const code = raw.replace(/^```[\w]*\n?/,'').replace(/\n?```$/,'').trim();
+    document.getElementById('ai-code').value = code;
+    // ✨ 生成后自动绘制到画板
+    if (!window.board || !window.board.create) {
+      setAIStat('ai-stat','err','画板未初始化，代码已生成，请手动点击执行');
+      return;
+    }
+    try {
+      _runAIcode(code);
+      setAIStat('ai-stat','ok','✓ 已生成并绘制到画板');
+    } catch(e) {
+      setAIStat('ai-stat','err','生成代码有误，可手动修改后执行: '+e.message);
+    }
+  }
+}
+
+// Helper: run AI-generated JS in non-strict scope, preserve vars across calls
+window._aiScope = window._aiScope || {};
+function _runAIcode(code) {
+  // Ensure board is available
+  if (!window.board || !window.board.create) {
+    throw new Error('画板未初始化，请刷新页面');
+  }
+  // Strip strict mode directives, convert let/const/var declarations to bare assignments
+  // (so they go through the Proxy scope, not the Function's local scope)
+  const clean = code
+    .replace(/['"]use strict['"];\s*/g, '')
+    .replace(/\b(var|let|const)\s+([a-zA-Z_$][\w$]*)/g, '$2');
+  // Proxy: all identifier reads fall back to window, all writes go to _aiScope AND window.
+  // has()=>true makes `with` intercept every identifier lookup via this proxy.
+  const scope = new Proxy(window._aiScope, {
+    has()    { return true; },
+    get(t,k) { return (k in t) ? t[k] : window[k]; },
+    set(t,k,v){ t[k]=v; try{ window[k]=v; }catch(_){} return true; }
+  });
+  try {
+    (new Function('with(this){' + clean + '}')).call(scope);
+    try { window.board.update(); } catch(_){}
+    // Log code to drawing history
+    if (!window._codeLogs) window._codeLogs = [];
+    window._codeLogs.push(code);
+  } catch(e) { throw e; }
+}
+
+function aiApply() {
+  const code = document.getElementById('ai-code').value.trim();
+  if (!code) return;
+  if (!window.board || !window.board.create) {
+    setAIStat('ai-stat','err','画板未初始化，请刷新页面后重试');
+    return;
+  }
+  try { _runAIcode(code); setAIStat('ai-stat','ok','✓ 已绘制到画板'); }
+  catch(e) { setAIStat('ai-stat','err','执行出错: '+e.message); }
+}
+
+function aiApplyCode(tid) {
+  const code = document.getElementById(tid).value.trim();
+  if (!code) return;
+  if (!window.board || !window.board.create) {
+    alert('画板未初始化，请刷新页面后重试');
+    return;
+  }
+  try { _runAIcode(code); }
+  catch(e) { alert('执行出错: '+e.message); }
+}
+
+// ─── AI Beautify ──────────────────────────────────────
+async function aiBeautify() {
+  const style = document.getElementById('beautify-style').value || '教材简洁';
+  const state = getBoardStateDescription();
+  const sys = `你是几何图形美化专家，生成 JSXGraph JS 代码来修改现有图形的样式。
+规则：
+1. 使用 board.objectsList 遍历对象并调用 o.setAttribute({...}) 修改样式
+2. 点用 fillColor/strokeColor/size，线用 strokeColor/strokeWidth，角用 radius/fillColor
+3. 只返回纯 JS 代码`;
+  const user = `当前图形：\n${state}\n\n美化风格：${style}\n\n请生成美化代码。`;
+  const raw = await callAI(sys, user, 'beautify-stat', 'beautify-btn');
+  if (raw) {
+    const code = raw.replace(/^```[\w]*\n?/,'').replace(/\n?```$/,'').trim();
+    document.getElementById('beautify-code').value = code;
+  }
+}
+
+function setBeautifyStyle(s) {
+  document.getElementById('beautify-style').value = s;
+}
+
+// ─── AI Connect ───────────────────────────────────────
+async function aiConnect() {
+  const prompt = document.getElementById('connect-prompt').value.trim();
+  if (!prompt) { setAIStat('connect-stat','err','请描述连线方式'); return; }
+  const state = getBoardStateDescription();
+  const sys = `你是几何连线助手，根据现有点生成 JSXGraph JS 连线代码。
+规则：
+1. 直接通过 board.objectsList 找点（type===JXG.OBJECT_TYPE_POINT），或用坐标创建新元素
+2. 只返回纯 JS 代码，不要 markdown`;
+  const user = `当前图形:\n${state}\n\n连线要求：${prompt}`;
+  const raw = await callAI(sys, user, 'connect-stat', 'connect-btn');
+  if (raw) {
+    const code = raw.replace(/^```[\w]*\n?/,'').replace(/\n?```$/,'').trim();
+    document.getElementById('connect-code').value = code;
+  }
+}
+
+function setConnectPrompt(p) {
+  document.getElementById('connect-prompt').value = p;
+}
+
+// ─── AI Export Code ───────────────────────────────────
+async function aiExportCode(engine) {
+  const state = getBoardStateDescription();
+  if (state === '(空画板)' || state === '(画板为空)') {
+    setAIStat('export-stat','err','画板为空，请先绘制图形'); return;
+  }
+  let sys, user;
+  if (engine === 'geogebra') {
+    sys = `你是 GeoGebra 代码生成专家。将几何图形描述转换为 GeoGebra 命令（每行一条，如 A=(0,0), Segment(A,B)）。只输出纯 GeoGebra 命令，不要 JS，不要 markdown。`;
+    user = `将以下 JSXGraph 图形转为 GeoGebra 命令：\n${state}`;
+  } else {
+    sys = `你是 Desmos 代码生成专家。将几何图形描述转换为 Desmos JSON expressions 数组（Array of {latex:string} objects）。只输出纯 JSON，不要说明。`;
+    user = `将以下 JSXGraph 图形转为 Desmos expressions JSON：\n${state}`;
+  }
+  const raw = await callAI(sys, user, 'export-stat', null);
+  if (raw) {
+    const code = raw.replace(/^```[\w]*\n?/,'').replace(/\n?```$/,'').trim();
+    document.getElementById('export-code').value = code;
+    document.getElementById('export-engine-tag').textContent = engine === 'geogebra' ? '引擎：GeoGebra' : '引擎：Desmos';
+    setAIStat('export-stat','ok','✓ 代码生成成功');
+  }
+}
+
+function copyExportCode() {
+  const v = document.getElementById('export-code').value;
+  if (!v) return;
+  navigator.clipboard.writeText(v).then(() => setAIStat('export-stat','ok','✓ 已复制到剪贴板'));
+}
+
+async function sendCodeToAnnotation() {
+  const tid = new URLSearchParams(location.search).get('tid');
+  const engine = document.getElementById('export-engine-tag').textContent.includes('GeoGebra') ? 'geogebra' : 'desmos';
+  const code = document.getElementById('export-code').value.trim();
+  if (!tid || !code) return;
+  try {
+    const r = await fetch('/api/triplet/'+tid+'/visualization', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ engine, code })
+    });
+    if (r.ok) setAIStat('export-stat','ok','✓ 已发送到标注系统');
+    else setAIStat('export-stat','err','发送失败: HTTP '+r.status);
+  } catch(e) { setAIStat('export-stat','err','发送出错: '+e.message); }
+}
+
+// ─── Init quick-chips ─────────────────────────────────
+// (Chips already set by initAIChips; no duplicate init needed)
+
+// ════════════════════════════════════════════════════════════════
+//   EXTENDED HINTS & TOOLS
+// ════════════════════════════════════════════════════════════════
+HINTS['measure-length'] = '依次点击两个已有点，标注它们之间的距离';
+HINTS['measure-angle']  = '依次点击三个已有点（第2个为顶点），标注角度';
+HINTS['lock-point']     = '点击一个已有点将其锁定/解锁（锁定后不可拖动）';
+
+// ════════════════════════════════════════════════════════════════
+//   THREE.JS 3D MODULE
+// ════════════════════════════════════════════════════════════════
+let is3DMode = false;
+let renderer3d = null, scene3d = null, camera3d = null, animFrame3d = null;
+let shapes3d = [];   // {id, type, dims, group, mesh, edgeMesh, edgeGeo, mat}
+let sel3d   = null;
+let _orbitDrag = false, _orbitX = 0, _orbitY = 0;
+let _orbitTheta = 0.7, _orbitPhi = 0.5, _orbitR = 14;
+const _orbitTarget = {x:0, y:0, z:0};
+// Vertex / edge drawing mode (未来扩展；声明于此避免 mousedown 里 ReferenceError)
+let _3dVertexMode = false, _3dEdgeMode = false;
+let vertices3d = [], edges3d = [];
+
+const SHAPE3D_NAMES   = {box:'长方体',prism:'棱柱',sphere:'球',cylinder:'圆柱',cone:'圆锥',pyramid:'四棱锥',torus:'圆环',octahedron:'八面体',tetrahedron:'四面体'};
+const SHAPE3D_COLORS  = [0xbfdbfe,0xfde68a,0xd9f99d,0xfbcfe8,0xe9d5ff,0xfed7aa,0xa7f3d0,0xfca5a5];
+const SHAPE3D_DIMS    = {box:{w:3,h:3,d:3},prism:{r:2,h:4,sides:6},sphere:{r:2},cylinder:{r:1.5,h:3},cone:{r:2,h:4},pyramid:{w:3,h:4},torus:{r:2,tube:0.6},octahedron:{r:2},tetrahedron:{r:2}};
+const SHAPE3D_DIM_DEF = {
+  box:        [{k:'w',l:'宽'},{k:'h',l:'高'},{k:'d',l:'深'}],
+  prism:      [{k:'r',l:'半径'},{k:'h',l:'高'},{k:'sides',l:'边数'}],
+  sphere:     [{k:'r',l:'半径'}],
+  cylinder:   [{k:'r',l:'半径'},{k:'h',l:'高'}],
+  cone:       [{k:'r',l:'底半径'},{k:'h',l:'高'}],
+  pyramid:    [{k:'w',l:'底宽'},{k:'h',l:'高'}],
+  torus:      [{k:'r',l:'外半径'},{k:'tube',l:'管半径'}],
+  octahedron: [{k:'r',l:'半径'}],
+  tetrahedron:[{k:'r',l:'半径'}],
+};
+
+function toggle3D() { is3DMode ? switch2D() : switch3D(); }
+
+function switch3D() {
+  if (typeof THREE === 'undefined') {
+    alert('❌ Three.js 未加载。请确认 /static/three.min.js 文件存在并重新加载页面。');
+    return;
+  }
+  is3DMode = true;
+  document.getElementById('jxgbox').style.display = 'none';
+  const wrap = document.getElementById('threejs-wrap');
+  wrap.style.display = 'block';
+  document.getElementById('btn-3d').classList.add('primary');
+  // Defer so the wrap has real layout dimensions
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    try {
+      if (!renderer3d) init3D();
+      else { _resize3D(); render3D(); }
+      render3DList();
+    } catch(e) {
+      console.error('[3D init error]', e);
+      const msg = '3D 初始化失败: ' + e.message + '\n\n请检查浏览器是否支持 WebGL（可访问 get.webgl.org 验证）';
+      alert(msg);
+    }
+  }));
+}
+
+function switch2D() {
+  is3DMode = false;
+  document.getElementById('jxgbox').style.display = 'block';
+  document.getElementById('threejs-wrap').style.display = 'none';
+  document.getElementById('btn-3d').classList.remove('primary');
+  if (animFrame3d) { cancelAnimationFrame(animFrame3d); animFrame3d = null; }
+}
+
+function _resize3D() {
+  const wrap = document.getElementById('threejs-wrap');
+  const W = wrap.offsetWidth, H = Math.max(wrap.offsetHeight - 24, 100);
+  renderer3d.setSize(W, H);
+  camera3d.aspect = W / H;
+  camera3d.updateProjectionMatrix();
+}
+
+function init3D() {
+  const wrap   = document.getElementById('threejs-wrap');
+  const canvas = document.getElementById('threejs-canvas');
+  const W = Math.max(wrap.offsetWidth  || wrap.clientWidth  || 600, 200);
+  const H = Math.max((wrap.offsetHeight || wrap.clientHeight || 450) - 24, 100);
+
+  renderer3d = new THREE.WebGLRenderer({canvas, antialias:true, preserveDrawingBuffer:true});
+  renderer3d.setSize(W, H);
+  renderer3d.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer3d.shadowMap.enabled = true;
+
+  scene3d = new THREE.Scene();
+  scene3d.background = new THREE.Color(0xeef4fc);
+  scene3d.fog = new THREE.Fog(0xeef4fc, 30, 80);
+
+  camera3d = new THREE.PerspectiveCamera(55, W/H, 0.1, 500);
+  _updateCam3D();
+
+  // Lights — enhanced
+  const hemi = new THREE.HemisphereLight(0xe8f4fd, 0xdde8f0, 0.7);
+  scene3d.add(hemi);
+  const dl = new THREE.DirectionalLight(0xffffff, 0.9);
+  dl.position.set(10, 18, 8); dl.castShadow = true;
+  dl.shadow.mapSize.set(1024, 1024);
+  scene3d.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xfff0e0, 0.3);
+  dl2.position.set(-8, 6, -5);
+  scene3d.add(dl2);
+
+  // Floor (shadow receiver)
+  const floorGeo = new THREE.PlaneGeometry(40, 40);
+  const floorMat = new THREE.MeshLambertMaterial({color:0xeef2f7, transparent:true, opacity:0.5});
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+  floor.name = '__floor'; scene3d.add(floor);
+
+  // Grid + Axes
+  const grid = new THREE.GridHelper(24, 24, 0xbbc8d8, 0xd8e4f0);
+  grid.position.y = 0.01; scene3d.add(grid);
+  const axes = new THREE.AxesHelper(4); axes.position.y = 0.02; scene3d.add(axes);
+
+  // Orbit + vertex-drag + scale-handle-drag controls
+  let _vertexDrag    = null;  // vertex being dragged
+  let _scaleDragAct  = false; // dragging scale handle
+  let _scaleDragY0   = 0;     // start y for scale drag
+  let _mouseDownX    = 0, _mouseDownY = 0;  // for drag vs click detection
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  function _getMouseVec(e) {
+    const rect = canvas.getBoundingClientRect();
+    return new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width)  * 2 - 1,
+      -((e.clientY - rect.top)  / rect.height) * 2 + 1
+    );
+  }
+  function _raycast(mouse, objects) {
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(mouse, camera3d);
+    return { ray, hits: ray.intersectObjects(objects) };
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    _mouseDownX = e.clientX; _mouseDownY = e.clientY;
+    // Right-click: delete vertex under cursor
+    if (e.button === 2) {
+      if (vertices3d.length) {
+        const mouse = _getMouseVec(e);
+        const ray = new THREE.Raycaster(); ray.setFromCamera(mouse, camera3d);
+        const vhits = ray.intersectObjects(vertices3d.map(v => v.mesh));
+        if (vhits.length) {
+          const vtx = vertices3d.find(v => v.mesh === vhits[0].object);
+          if (vtx) _deleteVertex3D(vtx);
+          return;
+        }
+      }
+      return;
+    }
+    if (e.button !== 0) return;
+    const mouse = _getMouseVec(e);
+    const ray   = new THREE.Raycaster(); ray.setFromCamera(mouse, camera3d);
+
+    // Priority 1 (scale handle removed — use dim-bar inputs to resize)
+
+    // Priority 2: vertex drag (only when not in vertex/edge mode)
+    if (!_3dVertexMode && !_3dEdgeMode && vertices3d.length) {
+      const vhits = ray.intersectObjects(vertices3d.map(v => v.mesh));
+      if (vhits.length) {
+        _vertexDrag = vertices3d.find(v => v.mesh === vhits[0].object);
+        canvas.style.cursor = 'grabbing';
+        return;
+      }
+    }
+
+    // Default: orbit
+    _orbitDrag = true; _orbitX = e.clientX; _orbitY = e.clientY;
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (_vertexDrag) { canvas.style.cursor = _3dVertexMode || _3dEdgeMode ? 'crosshair' : 'grab';
+      if (_selVertex === _vertexDrag) _vertexDrag.mesh.material.color.setHex(VTX_SEL_COLOR);
+      else _vertexDrag.mesh.material.color.setHex(VTX_COLOR); }
+    _vertexDrag   = null;
+    _scaleDragAct = false;
+    _orbitDrag    = false;
+  });
+
+  // mousemove 挂在 window 上，确保鼠标移出 canvas 时拖动不会中断
+  window.addEventListener('mousemove', e => {
+    if (!is3DMode) return;
+    // Scale handle drag
+    // (scale handle drag removed)
+    // Vertex drag (XZ or Shift+Y)
+    if (_vertexDrag) {
+      if (e.shiftKey) {
+        // Shift+drag: adjust Y (height) via mouse vertical movement
+        const newY = Math.max(0, _vertexDrag.pos.y - e.movementY * 0.06);
+        _vertexDrag.pos.setY(newY);
+        _vertexDrag.mesh.position.setY(newY);
+        if (_vertexDrag.sprite) _vertexDrag.sprite.position.set(
+          _vertexDrag.pos.x + 0.22, newY + 0.28, _vertexDrag.pos.z + 0.22
+        );
+      } else {
+        // Normal drag: XZ floor plane
+        const mouse = _getMouseVec(e);
+        const ray   = new THREE.Raycaster(); ray.setFromCamera(mouse, camera3d);
+        const plane = new THREE.Plane(new THREE.Vector3(0,1,0), -_vertexDrag.pos.y);
+        const pt    = new THREE.Vector3();
+        if (ray.ray.intersectPlane(plane, pt)) {
+          _vertexDrag.pos.set(pt.x, _vertexDrag.pos.y, pt.z);
+          _vertexDrag.mesh.position.set(pt.x, _vertexDrag.pos.y, pt.z);
+          if (_vertexDrag.sprite) _vertexDrag.sprite.position.set(
+            pt.x + 0.22, _vertexDrag.pos.y + 0.28, pt.z + 0.22
+          );
+        }
+      }
+      // Rebuild all connected edges
+      edges3d.forEach(edge => {
+        if (edge.v1 === _vertexDrag || edge.v2 === _vertexDrag) {
+          const positions = edge.line.geometry.attributes.position;
+          positions.setXYZ(0, edge.v1.pos.x, edge.v1.pos.y, edge.v1.pos.z);
+          positions.setXYZ(1, edge.v2.pos.x, edge.v2.pos.y, edge.v2.pos.z);
+          positions.needsUpdate = true;
+        }
+      });
+      if (_selVertex === _vertexDrag) _showVtxBar(_vertexDrag);
+      return;
+    }
+    // Orbit
+    if (_orbitDrag) {
+      _orbitTheta -= (e.clientX - _orbitX) * 0.008;
+      _orbitPhi = Math.max(0.04, Math.min(Math.PI * 0.95, _orbitPhi - (e.clientY - _orbitY) * 0.008));
+      _orbitX = e.clientX; _orbitY = e.clientY;
+      _updateCam3D();
+    }
+    // Edge preview line (follow mouse in edge mode)
+    if (_3dEdgeMode && _edgePendingVertex) {
+      const sh = _findSnapHelper(e);
+      // Reset all helper colors
+      _snapHelpers.forEach(h => h.mesh.material.color.setHex(SNAP_COLOR));
+      if (sh) {
+        sh.mesh.material.color.setHex(SNAP_COLOR_H);
+        _updateEdgePreview(sh.pos);
+      } else {
+        const hit = _get3DWorldPos(e);
+        if (hit) _updateEdgePreview(hit.pos);
+      }
+    }
+    // When entering edge mode, rebuild snap helpers on any mouse move over canvas
+    if (_3dEdgeMode && !_snapHelpers.length && edges3d.length) {
+      _buildSnapHelpers();
+    }
+  });
+
+  // ── 触摸支持：单指旋转 / 双指缩放 ──────────────────────────────
+  let _touch1 = null, _touch2Dist = 0;
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      _touch1 = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      _orbitDrag = true; _orbitX = _touch1.x; _orbitY = _touch1.y;
+    } else if (e.touches.length === 2) {
+      _orbitDrag = false;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      _touch2Dist = Math.sqrt(dx*dx + dy*dy);
+    }
+  }, {passive: false});
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && _orbitDrag) {
+      const cx = e.touches[0].clientX, cy = e.touches[0].clientY;
+      _orbitTheta -= (cx - _orbitX) * 0.012;
+      _orbitPhi = Math.max(0.04, Math.min(Math.PI * 0.95, _orbitPhi - (cy - _orbitY) * 0.012));
+      _orbitX = cx; _orbitY = cy;
+      _updateCam3D();
+    } else if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      _orbitR = Math.max(3, Math.min(60, _orbitR - (dist - _touch2Dist) * 0.05));
+      _touch2Dist = dist;
+      _updateCam3D();
+    }
+  }, {passive: false});
+
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (e.touches.length === 0) { _orbitDrag = false; _touch1 = null; }
+  }, {passive: false});
+
+  canvas.addEventListener('wheel', e => {
+    _orbitR = Math.max(3, Math.min(60, _orbitR + e.deltaY * 0.008));
+    _updateCam3D(); e.preventDefault();
+  }, {passive:false});
+
+  // Click to select / place vertex / connect edge
+  canvas.addEventListener('click', e => {
+    const dx = e.clientX - _mouseDownX, dy = e.clientY - _mouseDownY;
+    if (dx*dx + dy*dy > 25) return; // was a drag (>5px), ignore
+
+    // Vertex/Edge edit modes take priority
+    if (_3dVertexMode || _3dEdgeMode) { _handle3DEditClick(e); return; }
+
+    const rect = canvas.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((e.clientX - rect.left) / rect.width)  * 2 - 1,
+      -((e.clientY - rect.top)  / rect.height) * 2 + 1
+    );
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(mouse, camera3d);
+
+    // Click on existing vertex → select it
+    if (vertices3d.length) {
+      const vhits = ray.intersectObjects(vertices3d.map(v => v.mesh));
+      if (vhits.length) {
+        const vtx = vertices3d.find(v => v.mesh === vhits[0].object);
+        if (vtx) { _selectVertex3D(vtx); return; }
+      }
+    }
+    // Click on shape → select shape
+    const hits = ray.intersectObjects(shapes3d.map(s => s.mesh).filter(Boolean));
+    if (hits.length) {
+      const s = shapes3d.find(x => x.mesh === hits[0].object);
+      if (s) { _deselectVertex3D(); selectShape3D(s); }
+    } else {
+      _deselectVertex3D();
+      deselectShape3D();
+    }
+  });
+
+  // Resize observer
+  try {
+    new ResizeObserver(() => { if (renderer3d && is3DMode) _resize3D(); }).observe(wrap);
+  } catch(_) {}
+
+  _animate3D();
+}
+
+function _updateCam3D() {
+  if (!camera3d) return;
+  camera3d.position.set(
+    _orbitTarget.x + _orbitR * Math.sin(_orbitPhi) * Math.sin(_orbitTheta),
+    _orbitTarget.y + _orbitR * Math.cos(_orbitPhi),
+    _orbitTarget.z + _orbitR * Math.sin(_orbitPhi) * Math.cos(_orbitTheta)
+  );
+  camera3d.lookAt(_orbitTarget.x, _orbitTarget.y, _orbitTarget.z);
+}
+
+function _animate3D() {
+  animFrame3d = requestAnimationFrame(_animate3D);
+  renderer3d.render(scene3d, camera3d);
+}
+
+function render3D() {
+  if (renderer3d && scene3d && camera3d) renderer3d.render(scene3d, camera3d);
+}
+
+function _buildGeo(type, d) {
+  switch(type) {
+    case 'box':      return new THREE.BoxGeometry(d.w||3, d.h||3, d.d||3);
+    case 'prism':    return new THREE.CylinderGeometry(d.r||2, d.r||2, d.h||4, Math.max(3,d.sides||3));
+    case 'sphere':   return new THREE.SphereGeometry(d.r||2, 36, 18);
+    case 'cylinder': return new THREE.CylinderGeometry(d.r||1.5, d.r||1.5, d.h||3, 32);
+    case 'cone':     return new THREE.ConeGeometry(d.r||2, d.h||4, 32);
+    case 'pyramid':    return new THREE.CylinderGeometry(0, (d.w||3)*0.5, d.h||4, 4);
+    case 'torus':      return new THREE.TorusGeometry(d.r||2, d.tube||0.6, 16, 32);
+    case 'octahedron': return new THREE.OctahedronGeometry(d.r||2);
+    case 'tetrahedron':return new THREE.TetrahedronGeometry(d.r||2);
+    default:           return new THREE.BoxGeometry(3,3,3);
+  }
+}
+
+function add3DShape(type) {
+  if (!renderer3d) init3D();
+  const id   = Date.now();
+  const dims = {...SHAPE3D_DIMS[type]};
+  const geo  = _buildGeo(type, dims);
+  const col  = SHAPE3D_COLORS[shapes3d.length % SHAPE3D_COLORS.length];
+  const mat  = new THREE.MeshPhongMaterial({color:col, transparent:true, opacity:0.82,
+    shininess:40, specular:0x444444});
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true;
+  const edgeGeo  = new THREE.EdgesGeometry(geo);
+  const edgeMat  = new THREE.LineBasicMaterial({color:0x3b82f6});
+  const edgeMesh = new THREE.LineSegments(edgeGeo, edgeMat);
+  edgeMesh.visible = _show3DEdgeLines;
+  const group    = new THREE.Group();
+  group.add(mesh); group.add(edgeMesh);
+  group.position.y = type === 'sphere' ? (dims.r||2)
+    : type === 'torus'   ? ((dims.tube||0.6) + 0.1)
+    : type === 'octahedron' || type === 'tetrahedron' ? (dims.r||2)
+    : ((dims.h||3) / 2);
+  scene3d.add(group);
+  const shp = {id, type, dims, group, mesh, edgeMesh, edgeGeo, mat};
+  shapes3d.push(shp);
+  render3DList();
+  selectShape3D(shp);
+  logStep('\u6dfb\u52a03D\u56fe\u5f62 '+SHAPE3D_NAMES[type], '// 3D shape: '+type);
+}
+
+function _rebuildShape3D(s) {
+  s.group.remove(s.mesh); s.group.remove(s.edgeMesh);
+  s.mesh.geometry.dispose(); s.edgeGeo.dispose();
+  const geo      = _buildGeo(s.type, s.dims);
+  s.mesh         = new THREE.Mesh(geo, s.mat);
+  s.mesh.castShadow = true;
+  s.edgeGeo      = new THREE.EdgesGeometry(geo);
+  s.edgeMesh     = new THREE.LineSegments(s.edgeGeo, new THREE.LineBasicMaterial({color:0x3b82f6}));
+  s.edgeMesh.visible = _show3DEdgeLines;
+  s.group.add(s.mesh); s.group.add(s.edgeMesh);
+  s.group.position.y = s.type === 'sphere' ? (s.dims.r||2)
+    : s.type === 'torus' ? ((s.dims.tube||0.6) + 0.1)
+    : s.type === 'octahedron' || s.type === 'tetrahedron' ? (s.dims.r||2)
+    : ((s.dims.h||3)/2);
+}
+
+let _scaleHandle3d = null;  // kept for no-op compatibility
+function _addScaleHandle3d(s) { /* scale handle removed */ }
+function _removeScaleHandle3d() { _scaleHandle3d = null; }
+
+// ── Edge-line (棱线) toggle ────────────────────────────────────────────────
+let _show3DEdgeLines = true;
+function toggle3DEdgeLines() {
+  _show3DEdgeLines = !_show3DEdgeLines;
+  shapes3d.forEach(s => { if (s.edgeMesh) s.edgeMesh.visible = _show3DEdgeLines; });
+  const btn = document.getElementById('btn-3d-edges');
+  if (btn) btn.textContent = '边线 ' + (_show3DEdgeLines ? '✓' : '✗');
+}
+
+function selectShape3D(s) {
+  shapes3d.forEach(x => { x.mat.emissive && x.mat.emissive.setHex(0x000000); });
+  sel3d = s;
+  if (s.mat.emissive) { s.mat.emissive.setHex(0x3b82f6); s.mat.emissiveIntensity = 0.22; }
+  _showDimBar(s);
+  _addScaleHandle3d(s);
+  // Sync color picker
+  const hex = '#' + s.mat.color.getHexString();
+  const cp = document.getElementById('d3-color-pick');
+  if (cp) cp.value = hex;
+  render3DList();
+}
+
+function deselectShape3D() {
+  shapes3d.forEach(x => { if(x.mat.emissive) x.mat.emissive.setHex(0x000000); });
+  sel3d = null;
+  _removeScaleHandle3d();
+  document.getElementById('d3-dim-bar').classList.remove('show');
+  render3DList();
+}
+
+function _showDimBar(s) {
+  document.getElementById('d3-sel-name').textContent = SHAPE3D_NAMES[s.type];
+  const defs = SHAPE3D_DIM_DEF[s.type] || [];
+  document.getElementById('d3-dim-inputs').innerHTML = defs.map(d =>
+    '<span style="font-size:11px;color:#64748b">'+d.l+':</span><input class="d3-dim-input" data-key="'+d.k+'" value="'+(s.dims[d.k]||1)+'" type="number" step="0.5" min="0.5"/>'
+  ).join(' ');
+  document.getElementById('d3-dim-bar').classList.add('show');
+}
+
+function applyD3Dims() {
+  if (!sel3d) return;
+  document.querySelectorAll('#d3-dim-inputs input').forEach(inp => {
+    sel3d.dims[inp.dataset.key] = parseFloat(inp.value) || 1;
+  });
+  _rebuildShape3D(sel3d);
+  selectShape3D(sel3d);
+}
+
+function delD3Sel() {
+  if (!sel3d) return;
+  scene3d.remove(sel3d.group);
+  shapes3d = shapes3d.filter(s => s !== sel3d);
+  sel3d = null;
+  _removeScaleHandle3d();
+  document.getElementById('d3-dim-bar').classList.remove('show');
+  render3DList();
+}
+
+function render3DList() {
+  const el = document.getElementById('d3-shapes-list');
+  if (!shapes3d.length) {
+    el.innerHTML = '<div style="padding:8px 10px;font-size:11px;color:var(--muted);text-align:center">\u70b9\u51fb\u4e0a\u65b9\u6309\u9215\u6dfb\u52a0</div>';
+    return;
+  }
+  el.innerHTML = shapes3d.map((s,i) =>
+    '<div class="d3-shape-item'+(sel3d===s?' sel':'')+'" onclick="selectShape3D(shapes3d['+i+'])">' +
+    '<span>'+SHAPE3D_NAMES[s.type]+'</span>' +
+    '<span class="d3-shape-del" onclick="event.stopPropagation();scene3d.remove(shapes3d['+i+'].group);shapes3d.splice('+i+',1);deselectShape3D()">\u2715</span>' +
+    '</div>'
+  ).join('');
+}
+
+function capture3D() {
+  if (!renderer3d) return;
+  renderer3d.render(scene3d, camera3d);
+  const a = document.createElement('a');
+  a.download = 'geometry3d_' + Date.now() + '.png';
+  a.href = document.getElementById('threejs-canvas').toDataURL('image/png');
+  a.click();
+}
+
+function export3DToGeoGebra() {
+  if (!shapes3d.length) { alert('\u8bf7\u5148\u6dfb\u52a03D\u56fe\u5f62'); return; }
+  let cmds = ['SetPerspective("3D")'];
+  shapes3d.forEach((s,i) => {
+    const n = String.fromCharCode(65+i);
+    if (s.type==='box')      cmds.push(n+'=Cuboid((0,0,0),('+s.dims.w+','+s.dims.d+','+s.dims.h+'))');
+    else if (s.type==='sphere') cmds.push(n+'=Sphere((0,0,'+(s.dims.r||2)+')'+',' +(s.dims.r||2)+')');
+    else if (s.type==='cylinder') cmds.push(n+'=Cylinder((0,0,0),(0,0,'+s.dims.h+'),'+s.dims.r+')');
+    else if (s.type==='cone')  cmds.push(n+'=Cone((0,0,0),(0,0,'+s.dims.h+'),'+s.dims.r+')');
+    else if (s.type==='prism') cmds.push(n+'=Prism(Polygon(Sequence((cos(2pi*k/'+(s.dims.sides||3)+')*('+s.dims.r||2+'),sin(2pi*k/'+(s.dims.sides||3)+')*('+s.dims.r||2+'),0),k,1,'+(s.dims.sides||3)+')),'+s.dims.h+')');
+    else if (s.type==='pyramid') cmds.push(n+'=Pyramid(Polygon((0,0,0),('+s.dims.w+',0,0),('+s.dims.w+','+s.dims.d+',0),(0,'+s.dims.d+',0)),('+s.dims.w/2+','+s.dims.d/2+','+s.dims.h+'))');
+  });
+  switchAITab('export');
+  if (!document.getElementById('ai-panel').classList.contains('open')) toggleAIPanel();
+  setTimeout(() => {
+    document.getElementById('export-code').value = cmds.join('\n');
+    document.getElementById('export-engine-tag').textContent = '\u5f15\u64ce\uff1aGeoGebra (3D)';
+  }, 80);
+}
+
+// ─── 3D: Apply color to selected shape ──────────────────────────────────
+function applyD3Color(hex) {
+  const col = parseInt(hex.replace('#',''), 16);
+  if (!sel3d) return;
+  sel3d.mat.color.setHex(col);
+  if (sel3d.mat.emissive) { sel3d.mat.emissive.setHex(0x3b82f6); sel3d.mat.emissiveIntensity = 0.22; }
+  if (sel3d.edgeMesh) sel3d.edgeMesh.material.color.set(hex);
+  render3D();
+}
+
+async function export3DToAnnotation() {
+  if (!TID) { alert('\u672a\u5173\u8054\u9898\u76ee\uff0c\u8bf7\u901a\u8fc7 ?tid= \u53c2\u6570\u6253\u5f00'); return; }
+  if (!renderer3d) return;
+  renderer3d.render(scene3d, camera3d);
+  const canvas = document.getElementById('threejs-canvas');
+  canvas.toBlob(async (blob) => {
+    const fd = new FormData();
+    fd.append('file', blob, 'geometry3d_'+TID+'_'+Date.now()+'.png');
+    const r = await fetch(API+'/api/triplets/'+TID+'/images', {method:'POST', body:fd});
+    if (r.ok) { const msg = document.getElementById('measure-bar'); msg.textContent='\u2705 3D\u622a\u56fe\u5df2\u4e0a\u4f20'; msg.classList.add('show'); setTimeout(()=>msg.classList.remove('show'),2500); }
+    else alert('\u4e0a\u4f20\u5931\u8d25');
+  }, 'image/png');
+}
+
+// ════════════════════════════════════════════════════════════════
+//   3D VERTEX / EDGE INTERNAL EDIT
+// ════════════════════════════════════════════════════════════════
+let _vtxCounter  = 0;
+let _edgePendingVertex = null;
+let _edgePreviewLine   = null;
+let _selVertex         = null;
+
+// ── Division snap helpers (mid/trisect points shown in edge mode) ───────────
+let _snapHelpers = [];   // [{mesh, pos, onEdge}] — virtual dots, not real vertices
+
+const SNAP_DIVS    = [2, 3];  // 2等分(中点) + 3等分
+const SNAP_COLOR   = 0xadd8e6; // light-blue, semi-transparent
+const SNAP_COLOR_H = 0xfbbf24; // amber when hovered/snapped
+
+function _buildSnapHelpers() {
+  _clearSnapHelpers();
+  if (!_3dEdgeMode) return;
+
+  // Collect all segments to divide: edges3d + bounding edges of shapes
+  const segments = [];
+  edges3d.forEach(e => segments.push([e.v1.pos, e.v2.pos]));
+  // Also treat every pair of real vertices as a segment (user-added vertices)
+  // (no need — edges already cover them)
+
+  segments.forEach(([a, b]) => {
+    SNAP_DIVS.forEach(div => {
+      for (let k = 1; k < div; k++) {
+        const t   = k / div;
+        const pos = new THREE.Vector3().lerpVectors(a, b, t);
+        const geo = new THREE.SphereGeometry(0.07, 10, 7);
+        const mat = new THREE.MeshPhongMaterial({
+          color: SNAP_COLOR, transparent: true, opacity: 0.55,
+          shininess: 60, depthTest: true
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(pos);
+        mesh.name = '__snapHelper';
+        scene3d.add(mesh);
+        _snapHelpers.push({ mesh, pos: pos.clone(), div, k });
+      }
+    });
+  });
+}
+
+function _clearSnapHelpers() {
+  _snapHelpers.forEach(h => {
+    h.mesh.geometry.dispose();
+    scene3d.remove(h.mesh);
+  });
+  _snapHelpers = [];
+}
+
+// Returns snapped helper point if mouse is close enough, else null
+function _findSnapHelper(e) {
+  if (!_snapHelpers.length || !camera3d) return null;
+  const canvas = document.getElementById('threejs-canvas');
+  const rect   = canvas.getBoundingClientRect();
+  const mouse  = new THREE.Vector2(
+    ((e.clientX - rect.left) / rect.width)  * 2 - 1,
+    -((e.clientY - rect.top)  / rect.height) * 2 + 1
+  );
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(mouse, camera3d);
+  const hits = ray.intersectObjects(_snapHelpers.map(h => h.mesh));
+  if (!hits.length) {
+    // Also check screen-space proximity (for when pointer is near but not on sphere)
+    let best = null, bestD = Infinity;
+    const W = rect.width, H = rect.height;
+    const px = (e.clientX - rect.left), py = (e.clientY - rect.top);
+    _snapHelpers.forEach(h => {
+      const p = h.pos.clone().project(camera3d);
+      const sx = (p.x + 1) / 2 * W, sy = (1 - p.y) / 2 * H;
+      const d  = (sx - px) * (sx - px) + (sy - py) * (sy - py);
+      if (d < bestD) { bestD = d; best = h; }
+    });
+    // 18px screen-space threshold
+    return (bestD < 18 * 18) ? best : null;
+  }
+  return _snapHelpers.find(h => h.mesh === hits[0].object) || null;
+}
+
+// ── Mode toggles ─────────────────────────────────────────────
+function toggle3DVertexMode() {
+  _3dEdgeMode = false;
+  _3dVertexMode = !_3dVertexMode;
+  document.getElementById('btn-3d-vertex').classList.toggle('primary', _3dVertexMode);
+  document.getElementById('btn-3d-edge').classList.remove('primary');
+  _cancelEdgePending();
+  _update3DCursorMode();
+}
+
+function toggle3DEdgeMode() {
+  _3dVertexMode = false;
+  _3dEdgeMode = !_3dEdgeMode;
+  document.getElementById('btn-3d-edge').classList.toggle('primary', _3dEdgeMode);
+  document.getElementById('btn-3d-vertex').classList.remove('primary');
+  _cancelEdgePending();
+  if (_3dEdgeMode) _buildSnapHelpers(); else _clearSnapHelpers();
+  _update3DCursorMode();
+}
+
+function exit3DEditModes() {
+  _3dVertexMode = false; _3dEdgeMode = false;
+  document.getElementById('btn-3d-vertex').classList.remove('primary');
+  document.getElementById('btn-3d-edge').classList.remove('primary');
+  _cancelEdgePending();
+  _clearSnapHelpers();
+  _update3DCursorMode();
+}
+
+function _update3DCursorMode() {
+  const c = document.getElementById('threejs-canvas');
+  if (!c) return;
+  if (_3dVertexMode)      { c.style.cursor = 'crosshair'; _setModeHint('✦ 加顶点模式 — 点击放置顶点，右键删除'); }
+  else if (_3dEdgeMode)   { c.style.cursor = 'cell';      _setModeHint('╱ 连线模式 — 点击选/建起点，再点终点连线，右键删除'); }
+  else                    { c.style.cursor = 'grab';       _setModeHint(''); }
+}
+
+function _setModeHint(msg) {
+  const el = document.getElementById('d3-mode-hint');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function _cancelEdgePending() {
+  if (_edgePendingVertex) {
+    _edgePendingVertex.mesh.material.color.setHex(VTX_COLOR);
+    _edgePendingVertex = null;
+  }
+  _clearEdgePreview();
+}
+
+// ── Get 3D world position from mouse event ───────────────────
+function _get3DWorldPos(e) {
+  if (!camera3d) return null;
+  const canvas = document.getElementById('threejs-canvas');
+  const rect   = canvas.getBoundingClientRect();
+  const mouse  = new THREE.Vector2(
+    ((e.clientX - rect.left) / rect.width)  * 2 - 1,
+    -((e.clientY - rect.top)  / rect.height) * 2 + 1
+  );
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(mouse, camera3d);
+
+  // 0. Snap to division helper (mid/trisect) — highest priority in edge mode
+  if (_3dEdgeMode && _snapHelpers.length) {
+    const sh = _findSnapHelper(e);
+    if (sh) return { pos: sh.pos.clone(), snapped: 'divHelper', snapHelper: sh };
+  }
+  // 1. Snap to existing vertex (within ~1 world unit screen threshold)
+  if (vertices3d.length) {
+    const vhits = ray.intersectObjects(vertices3d.map(v => v.mesh));
+    if (vhits.length && vhits[0].distance < _orbitR * 0.18) {
+      const vtx = vertices3d.find(v => v.mesh === vhits[0].object);
+      return { pos: vhits[0].object.position.clone(), snapped: 'vertex', vertex: vtx };
+    }
+  }
+  // 2. Hit a shape surface
+  const shapeMeshes = shapes3d.map(s => s.mesh).filter(Boolean);
+  if (shapeMeshes.length) {
+    const shits = ray.intersectObjects(shapeMeshes);
+    if (shits.length) return { pos: shits[0].point.clone(), snapped: 'shape' };
+  }
+  // 3. Floor plane (y=0)
+  const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const pt = new THREE.Vector3();
+  if (ray.ray.intersectPlane(floorPlane, pt)) return { pos: pt, snapped: 'floor' };
+  // 4. Fixed-distance fallback
+  return { pos: ray.ray.origin.clone().add(ray.ray.direction.clone().multiplyScalar(10)), snapped: 'air' };
+}
+
+// ── Palette: vertex = orange, edge = green, selected = cyan, pending = amber
+const VTX_COLOR      = 0xf97316;  // orange-500
+const VTX_SEL_COLOR  = 0x06b6d4;  // cyan-500  (selected)
+const VTX_PEND_COLOR = 0xf59e0b;  // amber-400 (edge start pending)
+const EDGE_COLOR     = 0x16a34a;  // green-600
+const EDGE_PREV_COLOR= 0x22d3ee;  // cyan-400  (preview)
+
+// ── Add a vertex ─────────────────────────────────────────────
+function _addVertex3D(pos) {
+  const label = _nextVtxLabel();
+  const geo   = new THREE.SphereGeometry(0.09, 14, 10);
+  const mat   = new THREE.MeshPhongMaterial({ color: VTX_COLOR, shininess: 80 });
+  const mesh  = new THREE.Mesh(geo, mat);
+  mesh.position.copy(pos);
+  mesh.name = '__vertex';
+  scene3d.add(mesh);
+
+  // Canvas-texture label sprite
+  const sprite = _makeTextSprite(label);
+  sprite.position.set(pos.x + 0.22, pos.y + 0.28, pos.z + 0.22);
+  scene3d.add(sprite);
+
+  const vtx = { id: Date.now(), label, pos: pos.clone(), mesh, sprite };
+  vertices3d.push(vtx);
+  _render3DEditList();
+  return vtx;
+}
+
+function _nextVtxLabel() {
+  const idx = _vtxCounter++;
+  const base = String.fromCharCode(65 + (idx % 26));
+  return idx < 26 ? base : base + Math.floor(idx / 26);
+}
+
+function _makeTextSprite(text) {
+  const cv  = document.createElement('canvas');
+  cv.width  = 80; cv.height = 64;
+  const ctx = cv.getContext('2d');
+  ctx.font  = 'bold 36px Arial';
+  ctx.fillStyle = '#1e293b';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, 40, 46);
+  const tex = new THREE.CanvasTexture(cv);
+  const mat = new THREE.SpriteMaterial({ map: tex, sizeAttenuation: true, transparent: true });
+  const sp  = new THREE.Sprite(mat);
+  sp.scale.set(0.55, 0.44, 1);
+  sp.name  = '__label';
+  return sp;
+}
+
+// ── Add an edge ───────────────────────────────────────────────
+function _addEdge3D(v1, v2) {
+  const pts = [v1.pos.clone(), v2.pos.clone()];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ color: EDGE_COLOR });
+  const line = new THREE.Line(geo, mat);
+  line.name  = '__edge';
+  scene3d.add(line);
+  const edge = { id: Date.now(), v1, v2, line, geo };
+  edges3d.push(edge);
+  _render3DEditList();
+  return edge;
+}
+
+// ── Edge preview (ghost line while picking second vertex) ─────
+function _clearEdgePreview() {
+  if (_edgePreviewLine) { scene3d.remove(_edgePreviewLine); _edgePreviewLine = null; }
+}
+
+function _updateEdgePreview(pos) {
+  _clearEdgePreview();
+  const pts = [_edgePendingVertex.pos.clone(), pos.clone()];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineBasicMaterial({ color: EDGE_PREV_COLOR, transparent: true, opacity: 0.55 });
+  _edgePreviewLine = new THREE.Line(geo, mat);
+  _edgePreviewLine.name = '__edgePreview';
+  scene3d.add(_edgePreviewLine);
+}
+
+// ── Handle click in vertex / edge edit mode ───────────────────
+function _handle3DEditClick(e) {
+  if (_3dVertexMode) {
+    const hit = _get3DWorldPos(e);
+    if (!hit) return;
+    _addVertex3D(hit.pos);
+    return;
+  }
+
+  if (_3dEdgeMode) {
+    // Resolve what was clicked: snap helper → real vertex / new vertex
+    let vtx = null;
+    // Priority A: snap helper (division point) → auto-create vertex there
+    const sh = _findSnapHelper(e);
+    if (sh) {
+      vtx = _addVertex3D(sh.pos);
+    } else {
+      // Priority B: existing vertex (raycasted)
+      const canvas = document.getElementById('threejs-canvas');
+      const rect   = canvas.getBoundingClientRect();
+      const mouse  = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width)  * 2 - 1,
+        -((e.clientY - rect.top)  / rect.height) * 2 + 1
+      );
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(mouse, camera3d);
+      if (vertices3d.length) {
+        const vhits = ray.intersectObjects(vertices3d.map(v => v.mesh));
+        if (vhits.length) vtx = vertices3d.find(v => v.mesh === vhits[0].object);
+      }
+      // Priority C: world position hit → create new vertex
+      if (!vtx) {
+        const hit = _get3DWorldPos(e);
+        if (!hit) return;
+        vtx = _addVertex3D(hit.pos);
+      }
+    }
+
+    if (!_edgePendingVertex) {
+      // First click: set start vertex (highlight amber)
+      _edgePendingVertex = vtx;
+      vtx.mesh.material.color.setHex(VTX_PEND_COLOR);
+    } else {
+      // Second click: draw edge then reset
+      if (_edgePendingVertex !== vtx) {
+        _addEdge3D(_edgePendingVertex, vtx);
+        _buildSnapHelpers(); // refresh division helpers with new edge
+      }
+      _edgePendingVertex.mesh.material.color.setHex(VTX_COLOR);
+      _edgePendingVertex = null;
+      _clearEdgePreview();
+    }
+  }
+}
+
+// ── Select / deselect vertex ──────────────────────────────────
+function _selectVertex3D(vtx) {
+  if (_selVertex && _selVertex !== vtx) _deselectVertex3D();
+  _selVertex = vtx;
+  vtx.mesh.material.color.setHex(VTX_SEL_COLOR);
+  _showVtxBar(vtx);
+  deselectShape3D();
+}
+
+function _deselectVertex3D() {
+  if (!_selVertex) return;
+  if (_selVertex !== _edgePendingVertex) _selVertex.mesh.material.color.setHex(VTX_COLOR);
+  _selVertex = null;
+  const bar = document.getElementById('d3-vtx-bar');
+  if (bar) bar.classList.remove('show');
+}
+
+function _showVtxBar(vtx) {
+  const bar = document.getElementById('d3-vtx-bar');
+  if (!bar) return;
+  document.getElementById('d3-vtx-label').textContent = vtx.label;
+  document.getElementById('d3-vtx-x').value = vtx.pos.x.toFixed(2);
+  document.getElementById('d3-vtx-y').value = vtx.pos.y.toFixed(2);
+  document.getElementById('d3-vtx-z').value = vtx.pos.z.toFixed(2);
+  bar.classList.add('show');
+}
+
+function applyVtxPos() {
+  if (!_selVertex) return;
+  const x = parseFloat(document.getElementById('d3-vtx-x').value) || 0;
+  const y = Math.max(0, parseFloat(document.getElementById('d3-vtx-y').value) || 0);
+  const z = parseFloat(document.getElementById('d3-vtx-z').value) || 0;
+  _selVertex.pos.set(x, y, z);
+  _selVertex.mesh.position.set(x, y, z);
+  if (_selVertex.sprite) _selVertex.sprite.position.set(x + 0.22, y + 0.28, z + 0.22);
+  edges3d.forEach(edge => {
+    if (edge.v1 === _selVertex || edge.v2 === _selVertex) {
+      const p = edge.line.geometry.attributes.position;
+      p.setXYZ(0, edge.v1.pos.x, edge.v1.pos.y, edge.v1.pos.z);
+      p.setXYZ(1, edge.v2.pos.x, edge.v2.pos.y, edge.v2.pos.z);
+      p.needsUpdate = true;
+    }
+  });
+}
+
+function delSelVertex3D() {
+  if (_selVertex) _deleteVertex3D(_selVertex);
+}
+
+function _deleteVertex3D(vtx) {
+  // Remove connected edges
+  const toRemove = edges3d.filter(e => e.v1 === vtx || e.v2 === vtx);
+  toRemove.forEach(e => { scene3d.remove(e.line); e.geo.dispose(); });
+  edges3d = edges3d.filter(e => e.v1 !== vtx && e.v2 !== vtx);
+  // Remove mesh and sprite
+  scene3d.remove(vtx.mesh); vtx.mesh.geometry.dispose();
+  if (vtx.sprite) scene3d.remove(vtx.sprite);
+  vertices3d = vertices3d.filter(v => v !== vtx);
+  if (_selVertex === vtx) {
+    _selVertex = null;
+    const bar = document.getElementById('d3-vtx-bar');
+    if (bar) bar.classList.remove('show');
+  }
+  if (_edgePendingVertex === vtx) _cancelEdgePending();
+  // rebuild snap helpers if in edge mode
+  if (_3dEdgeMode) _buildSnapHelpers();
+  _render3DEditList();
+}
+
+// ── Delete edge ───────────────────────────────────────────────
+function _deleteEdge3D(edge) {
+  scene3d.remove(edge.line);
+  edge.geo.dispose();
+  edges3d = edges3d.filter(e => e !== edge);
+  if (_3dEdgeMode) _buildSnapHelpers();
+  _render3DEditList();
+}
+
+// ── Clear all vertices and edges ──────────────────────────────
+function clearAll3DEdit() {
+  [...edges3d].forEach(e => { scene3d.remove(e.line); e.geo.dispose(); });
+  [...vertices3d].forEach(v => { scene3d.remove(v.mesh); v.mesh.geometry.dispose(); if(v.sprite) scene3d.remove(v.sprite); });
+  edges3d = []; vertices3d = [];
+  _selVertex = null; _cancelEdgePending();
+  _clearSnapHelpers();
+  const bar = document.getElementById('d3-vtx-bar');
+  if (bar) bar.classList.remove('show');
+  _vtxCounter = 0;
+  _render3DEditList();
+}
+
+// ── Render vertex/edge section in the shapes panel ───────────
+function _render3DEditList() {
+  render3DList(); // re-render shapes
+  const el = document.getElementById('d3-shapes-list');
+  if (!el) return;
+  let extra = '';
+  if (vertices3d.length) {
+    extra += '<div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-top:1px solid #f1f5f9">顶点</div>';
+    vertices3d.forEach((v, i) => {
+      extra += '<div class="d3-shape-item'+ (_selVertex===v?' sel':'') +'" onclick="_selectVertex3D(vertices3d['+i+'])">'
+        + '<span>'+v.label+' ('+v.pos.x.toFixed(1)+','+v.pos.y.toFixed(1)+','+v.pos.z.toFixed(1)+')</span>'
+        + '<span class="d3-shape-del" onclick="event.stopPropagation();_deleteVertex3D(vertices3d['+i+'])">✕</span>'
+        + '</div>';
+    });
+  }
+  if (edges3d.length) {
+    extra += '<div style="padding:4px 10px 2px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-top:1px solid #f1f5f9">边</div>';
+    edges3d.forEach((e, i) => {
+      extra += '<div class="d3-shape-item">'
+        + '<span>'+e.v1.label+e.v2.label+'</span>'
+        + '<span class="d3-shape-del" onclick="_deleteEdge3D(edges3d['+i+'])">✕</span>'
+        + '</div>';
+    });
+  }
+  if (extra) el.insertAdjacentHTML('beforeend', extra);
+}
+
+// ESC to exit edit modes while in 3D
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && is3DMode) { exit3DEditModes(); _deselectVertex3D(); }
+});
+
+// ════════════════════════════════════════════════════════════════
+//   CONSTRAINT / MEASUREMENT ENGINE
+// ════════════════════════════════════════════════════════════════
+let measurements = [];   // {id, type, pts, label, getValue}
+let _mPts = [];          // temp pts for current measurement
+
+function toggleConstraintPanel() {
+  const p = document.getElementById('constraint-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function addMeasureHint() {
+  const type = document.getElementById('cp-type-sel').value;
+  setTool('measure-' + type);
+  document.getElementById('constraint-panel').style.display = 'none';
+}
+
+function addMeasurement(type, pts) {
+  const id = Date.now();
+  if (type === 'length' && pts.length >= 2) {
+    const [p1,p2] = pts;
+    const lbl = board.create('text', [
+      () => (p1.X()+p2.X())/2,
+      () => (p1.Y()+p2.Y())/2 + 0.3,
+      () => {
+        const d = Math.sqrt(Math.pow(p2.X()-p1.X(),2)+Math.pow(p2.Y()-p1.Y(),2));
+        return (p1.name&&p2.name ? p1.name+p2.name+'=' : '') + d.toFixed(2);
+      }
+    ], {
+      fontSize:13, strokeColor:'#3b82f6', fixed:true,
+      cssStyle:'background:#eff6ff;padding:1px 5px;border-radius:3px;border:1px solid #bfdbfe;font-family:monospace;pointer-events:none'
+    });
+    lbl._isMeasure = true;
+    measurements.push({id, type, pts, label:lbl,
+      get value(){return Math.sqrt(Math.pow(pts[1].X()-pts[0].X(),2)+Math.pow(pts[1].Y()-pts[0].Y(),2)).toFixed(3);}
+    });
+  } else if (type === 'angle' && pts.length >= 3) {
+    const [p1,vtx,p2] = pts;
+    const lbl = board.create('angle', [p1,vtx,p2], {
+      radius:0.55, strokeColor:'#10b981', fillColor:'#10b981', fillOpacity:0.15,
+      name:() => {
+        const a = JXG.Math.Geometry.angle(p1,vtx,p2);
+        return (a*180/Math.PI).toFixed(1) + '\u00b0';
+      }
+    });
+    lbl._isMeasure = true;
+    measurements.push({id, type, pts, label:lbl,
+      get value(){return (JXG.Math.Geometry.angle(pts[0],pts[1],pts[2])*180/Math.PI).toFixed(1)+'\u00b0';}
+    });
+  }
+  _mPts = [];
+  renderMeasures();
+}
+
+function removeMeasurement(idx) {
+  const m = measurements[idx];
+  if (m.label) try { board.removeObject(m.label,true); } catch(_){}
+  measurements.splice(idx,1);
+  renderMeasures();
+}
+
+function renderMeasures() {
+  const body = document.getElementById('cp-body');
+  if (!measurements.length) {
+    body.innerHTML = '<div class="cp-empty">\u6682\u65e0\u6d4b\u91cf\u9879\u76ee<br>\u4f7f\u7528\u5de6\u4fa7\u300c\u6d4b\u91cf\u300d\u5de5\u5177\u70b9\u51fb\u56fe\u5f62</div>';
+    return;
+  }
+  body.innerHTML = measurements.map((m,i) =>
+    '<div class="cp-row">' +
+    '<span class="cp-badge">'+(m.type==='length'?'\u957f\u5ea6':'\u89d2\u5ea6')+'</span>' +
+    '<span class="cp-val">'+m.value+'</span>' +
+    '<button class="cp-del" onclick="removeMeasurement('+i+')">\u2715</button>' +
+    '</div>'
+  ).join('');
+}
+
+function lockPoint(pt) {
+  const newFixed = !pt.visProp.fixed;
+  pt.setAttribute({fixed: newFixed});
+  board.update();
+  showMeasureHint((newFixed ? '\uD83D\uDD12 ' : '\uD83D\uDD13 ') + pt.name + (newFixed ? ' \u5df2\u9501\u5b9a' : ' \u5df2\u89e3\u9501'));
+}
+
+function showMeasureHint(msg) {
+  const bar = document.getElementById('measure-bar');
+  bar.textContent = msg;
+  bar.classList.add('show');
+  clearTimeout(bar._t);
+  bar._t = setTimeout(()=>bar.classList.remove('show'), 2500);
+}
+
+// Periodically refresh constraint panel values
+setInterval(()=>{
+  if (measurements.length && document.getElementById('constraint-panel').style.display!=='none') renderMeasures();
+}, 600);
+
+// ════════════════════════════════════════════════════════════════
+//   EXTEND dispatchTool to handle measure-length, measure-angle, lock-point
+// ════════════════════════════════════════════════════════════════
+const _dispatchOld = dispatchTool;
+dispatchTool = function(x, y, evt) {
+  const snap = snapPt(x, y);
+
+  if (tool === 'measure-length') {
+    if (!snap) { hint('\u8bf7\u70b9\u51fb\u4e00\u4e2a\u5df2\u6709\u70b9'); return; }
+    _mPts.push(snap);
+    if (_mPts.length === 1) {
+      hint('\u70b9\u51fb\u7b2c\u4e8c\u4e2a\u70b9\u5b8c\u6210\u957f\u5ea6\u6807\u6ce8');
+    } else if (_mPts.length >= 2) {
+      const d = Math.sqrt(Math.pow(_mPts[1].X()-_mPts[0].X(),2)+Math.pow(_mPts[1].Y()-_mPts[0].Y(),2));
+      addMeasurement('length', [..._mPts]);
+      showMeasureHint('\uD83D\uDCCF ' + (_mPts[0].name||'P1') + (_mPts[1].name||'P2') + ' = ' + d.toFixed(3));
+      _mPts = [];
+      hint(HINTS['measure-length']);
+    }
+    return;
+  }
+
+  if (tool === 'measure-angle') {
+    if (!snap) { hint('\u8bf7\u70b9\u51fb\u4e00\u4e2a\u5df2\u6709\u70b9'); return; }
+    _mPts.push(snap);
+    const msgs = ['\u70b9\u51fb\u9876\u70b9\uff08\u7b2c 2 \u4e2a\u70b9\uff09','\u70b9\u51fb\u89d2\u53e6\u4e00\u8fb9\u7684\u70b9\uff08\u7b2c 3 \u70b9\uff09'];
+    if (_mPts.length < 3) { hint(msgs[_mPts.length-1]); }
+    else {
+      addMeasurement('angle', [..._mPts]);
+      _mPts = []; hint(HINTS['measure-angle']);
+    }
+    return;
+  }
+
+  if (tool === 'lock-point') {
+    if (!snap) { hint('\u8bf7\u70b9\u51fb\u4e00\u4e2a\u5df2\u6709\u70b9'); return; }
+    lockPoint(snap); return;
+  }
+
+  _dispatchOld(x, y, evt);
+};
+
+// ════════════════════════════════════════════════════════════════
+//   STEP RECORDER
+// ════════════════════════════════════════════════════════════════
+let _isRec = false, _recSteps = [], _recT0 = 0;
+
+function toggleRecord() {
+  const bar = document.getElementById('rec-bar');
+  bar.classList.toggle('on');
+}
+
+function startRecord() {
+  if (_isRec) return;
+  _isRec = true; _recSteps = []; _recT0 = Date.now();
+  document.getElementById('rec-dot').classList.add('blink');
+  document.getElementById('rec-label').textContent = '\u5f55\u5236\u4e2d';
+  document.getElementById('rec-label').style.color = '#ef4444';
+  document.getElementById('rec-start-btn').disabled = true;
+  document.getElementById('rec-stop-btn').disabled = false;
+  document.getElementById('rec-count').textContent = '0 \u6b65';
+}
+
+function stopRecord() {
+  if (!_isRec) return;
+  _isRec = false;
+  document.getElementById('rec-dot').classList.remove('blink');
+  document.getElementById('rec-label').textContent = '\u5df2\u5f55 '+_recSteps.length+' \u6b65';
+  document.getElementById('rec-label').style.color = '';
+  document.getElementById('rec-start-btn').disabled = false;
+  document.getElementById('rec-stop-btn').disabled = true;
+  document.getElementById('rec-play-btn').disabled = _recSteps.length === 0;
+  document.getElementById('rec-export-btn').disabled = _recSteps.length === 0;
+}
+
+function logStep(desc, code) {
+  if (!_isRec) return;
+  _recSteps.push({t: Date.now()-_recT0, desc, code});
+  document.getElementById('rec-count').textContent = _recSteps.length + ' \u6b65';
+}
+
+async function playRecord() {
+  if (!_recSteps.length) return;
+  document.getElementById('rec-play-btn').disabled = true;
+  const prog = document.getElementById('play-progress');
+  // Clear board
+  JXG.JSXGraph.freeBoard(board);
+  undoStack=[]; redoStack=[]; _nameIdx=0; _usedNames.clear(); polyPts=[];
+  measurements=[]; _mPts=[];
+  updateUndoBtns(); updatePropsPanel(null);
+  initBoard(); setTool('move');
+  for (let i=0; i<_recSteps.length; i++) {
+    prog.textContent = '\u56de\u653e '+(i+1)+'/'+_recSteps.length;
+    try { eval(_recSteps[i].code); } catch(e){ console.warn('Step err:',e); }
+    await new Promise(r=>setTimeout(r, 700));
+  }
+  prog.textContent = '\u2705 \u56de\u653e\u5b8c\u6210';
+  setTimeout(()=>{prog.textContent='';},2000);
+  document.getElementById('rec-play-btn').disabled = false;
+}
+
+function exportRecord() {
+  const data = {version:1, created:new Date().toISOString(), steps:_recSteps};
+  const a = document.createElement('a');
+  a.download = 'geo_steps_'+Date.now()+'.json';
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  a.click();
+}
+
+// Patch mkPoint / mkSeg / mkCircle / mkPolygon to log steps
+const _OMkPt = mkPoint;
+mkPoint = function(x,y,name,opts) {
+  const el = _OMkPt(x,y,name,opts);
+  logStep('\u653e\u70b9 '+el.name, 'mkPoint('+x.toFixed(3)+','+y.toFixed(3)+',"'+el.name+'")');
+  return el;
+};
+const _OMkSeg = mkSeg;
+mkSeg = function(p1,p2) {
+  const el = _OMkSeg(p1,p2);
+  logStep('\u753b\u7ebf\u6bb5 '+p1.name+p2.name, 'mkSeg(board.objects["'+p1.id+'"],board.objects["'+p2.id+'"])');
+  return el;
+};
+const _OMkCirc = mkCircle;
+mkCircle = function(c,r) {
+  const el = _OMkCirc(c,r);
+  logStep('\u753b\u5706 \u5706\u5fc3'+c.name, 'mkCircle(board.objects["'+c.id+'"],board.objects["'+r.id+'"])');
+  return el;
+};
+
+// ════════════════════════════════════════════════════════════════
+//   AI QUIZ GENERATION
+// ════════════════════════════════════════════════════════════════
+function setQuizDiff(d) { document.getElementById('quiz-diff').value = d; }
+
+async function aiGenerateQuiz() {
+  const state = getBoardStateDescription();
+  if (state.includes('\u7a7a\u753b\u677f')) { setAIStat('quiz-stat','err','\u8bf7\u5148\u5728\u753b\u677f\u4e0a\u7ed8\u5236\u56fe\u5f62'); return; }
+  const diff = document.getElementById('quiz-diff').value || '\u4e2d\u7b49\u96be\u5ea6';
+  const sys = '\u4f60\u662f\u9ad8\u4e2d\u6570\u5b66\u51fa\u9898\u4e13\u5bb6\u3002\u6839\u636e\u51e0\u4f55\u56fe\u5f62\u4fe1\u606f\u751f\u6210\u4e00\u9053\u9ad8\u8d28\u91cf\u51e0\u4f55\u9898\u3002\u683c\u5f0f\uff1a\n\u3010\u9898\u76ee\u3011\n\u5df2\u77e5\uff1a...\n\u6c42\uff1a...\n\u3010\u53c2\u8003\u7b54\u6848\u3011\n...\u5173\u952e\u6b65\u9aa4...\n\u96be\u5ea6\uff1a'+diff+'\u3002\u9898\u76ee\u6761\u4ef6\u5b8c\u6574\u3001\u7b54\u6848\u552f\u4e00\u3001\u5177\u6709\u5b9e\u9645\u6559\u5b66\u610f\u4e49\u3002';
+  const raw = await callAI(sys, '\u51e0\u4f55\u56fe\u5f62\uff1a\n'+state+'\n\n\u8bf7\u51fa\u9898\u3002', 'quiz-stat', 'quiz-btn');
+  if (raw) document.getElementById('quiz-result').value = raw;
+}
+
+async function copyQuizToAnnotation() {
+  const text = document.getElementById('quiz-result').value.trim();
+  if (!text) return;
+  if (TID) {
+    try {
+      const r = await fetch(API+'/api/triplets/'+TID, {
+        method:'PATCH', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({question_text:text})
+      });
+      if (r.ok) { setAIStat('quiz-stat','ok','\u2705 \u5df2\u5199\u5165\u6807\u6ce8\u7cfb\u7edf'); return; }
+    } catch(_){}
+  }
+  navigator.clipboard.writeText(text).then(()=>setAIStat('quiz-stat','ok','\u2705 \u5df2\u590d\u5236\u5230\u526a\u8d34\u677f'));
+}
+
+// ════════════════════════════════════════════════════════════════
+//   AI HANDWRITING RECOGNITION
+// ════════════════════════════════════════════════════════════════
+let _hwImg = null;
+
+function loadHandwriteImg(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  document.getElementById('hw-filename').textContent = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _hwImg = e.target.result;
+    const canvas = document.getElementById('hw-preview');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0,0,185,120);
+      ctx.fillStyle='#f8fafc'; ctx.fillRect(0,0,185,120);
+      const sc = Math.min(185/img.width, 120/img.height);
+      ctx.drawImage(img,(185-img.width*sc)/2,(120-img.height*sc)/2,img.width*sc,img.height*sc);
+    };
+    img.src = _hwImg;
+    setAIStat('hw-stat','ok','\u2713 \u56fe\u7247\u5df2\u52a0\u8f7d\uff0c\u70b9\u51fb\u300c\u8bc6\u522b\u5e76\u751f\u6210\u300d');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function recognizeHandwrite() {
+  if (!_hwImg) { setAIStat('hw-stat','err','\u8bf7\u5148\u4e0a\u4f20\u56fe\u7247'); return; }
+  const cfg = getActiveAIConfig();
+  if (!cfg.key) { setAIStat('hw-stat','err','\u8bf7\u5148\u914d\u7f6e AI Key'); return; }
+  const btn = document.getElementById('hw-btn');
+  btn._o = btn.textContent; btn.textContent = '\u23f3 \u8bc6\u522b\u4e2d\u2026'; btn.disabled = true;
+  setAIStat('hw-stat','loading','\u6b63\u5728\u8bc6\u522b\u624b\u5199\u56fe\u5f62\u2026');
+  try {
+    const resp = await fetch(cfg.endpoint.replace(/\/+$/,'') + '/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+      body:JSON.stringify({
+        model: cfg.model,
+        messages:[{role:'user',content:[
+          {type:'text', text:'\u8bf7\u5206\u6790\u8fd9\u5f20\u624b\u7ed8\u51e0\u4f55\u56fe\uff0c\u751f\u6210\u5bf9\u5e94\u7684JSXGraph JS\u4ee3\u7801\u3002\u89c4\u5219\uff1a1.\u4e0d\u8981let/const/var 2.\u4f7f\u7528board.create() 3.\u53ea\u8fd4\u56de\u7eaf JS\u4ee3\u7801'},
+          {type:'image_url', image_url:{url:_hwImg}}
+        ]}],
+        temperature:0.2, max_tokens:1500
+      })
+    });
+    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    const data = await resp.json();
+    const raw  = data.choices?.[0]?.message?.content || '';
+    const code = raw.replace(/^```[\w]*\n?/,'').replace(/\n?```$/,'').trim();
+    document.getElementById('hw-code').value = code;
+    setAIStat('hw-stat','ok','\u2713 \u8bc6\u522b\u6210\u529f\uff0c\u70b9\u51fb\u300c\u6267\u884c\u300d\u663e\u793a\u56fe\u5f62');
+  } catch(e) {
+    setAIStat('hw-stat','err','\u274c '+e.message);
+  } finally {
+    btn.textContent = btn._o; btn.disabled = false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//   WOLFRAM ALPHA HELPER (via server proxy)
+// ════════════════════════════════════════════════════════════════
+async function wolframQuery(q, callback) {
+  try {
+    const r = await fetch('/api/wolfram?q=' + encodeURIComponent(q));
+    const data = await r.json();
+    if (data.result) callback(null, data.result);
+    else callback(data.error || 'No result', null);
+  } catch(e) { callback(e.message, null); }
+}
+
+// ════════════════════════════════════════════════════════════════
+//   OVERRIDE switchAITab (add quiz + handwrite to tab list)
+// ════════════════════════════════════════════════════════════════
+switchAITab = function(tab) {
+  ['draw','beautify','connect','export','quiz','handwrite'].forEach(t => {
+    const el = document.getElementById('ai-tab-'+t);
+    if (el) el.style.display = t===tab ? '' : 'none';
+  });
+  document.querySelectorAll('.ai-tab-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+};
+// ─────────────────────────────────────────────────────────────────
+//  绘图历史功能
+// ─────────────────────────────────────────────────────────────────
+function _geoHistGetAll() {
+  try { return JSON.parse(localStorage.getItem('geo_history') || '[]'); }
+  catch(_) { return []; }
+}
+function _geoHistSave(arr) {
+  if (arr.length > 60) arr = arr.slice(-60);
+  try { localStorage.setItem('geo_history', JSON.stringify(arr)); } catch(e) {
+    // 存储空间不足时，移除缩略图腾出空间
+    arr.forEach(d => { d.thumb = ''; });
+    try { localStorage.setItem('geo_history', JSON.stringify(arr)); } catch(_){}
+  }
+}
+function _geoHistThumb() {
+  try {
+    const svg = document.querySelector('#jxgbox svg');
+    if (!svg) return '';
+    const s = new XMLSerializer().serializeToString(svg);
+    // 截断至4KB避免localStorage溢出
+    return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s.substring(0, 4000));
+  } catch(_) { return ''; }
+}
+function _geoHistSaveCurrent(silent) {
+  if (!window._currentDrawingId) {
+    selectedEls.clear(); window._ctxTarget = null; window.board = board;
+  window._currentDrawingId = 'geo_' + Date.now();
+    window._currentDrawingName = '未命名图形';
+    window._codeLogs = window._codeLogs || [];
+  }
+  const all = _geoHistGetAll();
+  const idx = all.findIndex(d => d.id === window._currentDrawingId);
+  const rec = {
+    id:         window._currentDrawingId,
+    name:       window._currentDrawingName || '未命名图形',
+    createdAt:  idx >= 0 ? all[idx].createdAt : Date.now(),
+    updatedAt:  Date.now(),
+    thumb:      _geoHistThumb(),
+    codeLogs:   [...(window._codeLogs || [])]
+  };
+  if (idx >= 0) all[idx] = rec; else all.push(rec);
+  _geoHistSave(all);
+  const tag = document.getElementById('drawing-name-tag');
+  if (tag) tag.textContent = rec.name;
+  if (!silent) alert('✓ 已保存到绘图历史：' + rec.name);
+}
+
+function newDrawing() {
+  if (window._codeLogs && window._codeLogs.length > 0) {
+    if (confirm('保存当前绘图到历史再新建？')) _geoHistSaveCurrent(true);
+  }
+  const name = prompt('新建绘图名称：', '图形_' + new Date().toLocaleString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+  if (name === null) return;
+  // 清空画板
+  JXG.JSXGraph.freeBoard(board);
+  undoStack = []; redoStack = []; _nameIdx = 0;
+  try { _usedNames.clear(); } catch(_){}
+  polyPts = []; window._aiScope = {};
+  updateUndoBtns(); updatePropsPanel(null);
+  initBoard(); setTool('move'); updateCount();
+  // 初始化新记录
+  window._currentDrawingId = 'geo_' + Date.now();
+  window._currentDrawingName = name;
+  window._codeLogs = [];
+  const tag = document.getElementById('drawing-name-tag');
+  if (tag) tag.textContent = name;
+  // 保存空记录占位
+  const all = _geoHistGetAll();
+  all.push({ id: window._currentDrawingId, name, createdAt: Date.now(), updatedAt: Date.now(), thumb:'', codeLogs:[] });
+  _geoHistSave(all);
+  console.log('[newDrawing] 新建绘图：', name, window._currentDrawingId);
+}
+
+function saveDrawing() {
+  if (!window._codeLogs || window._codeLogs.length === 0) {
+    if (!window._currentDrawingId) {
+      const name = prompt('保存绘图名称：', '图形_' + new Date().toLocaleString());
+      if (!name) return;
+      window._currentDrawingId = 'geo_' + Date.now();
+      window._currentDrawingName = name;
+      window._codeLogs = [];
+    }
+  }
+  _geoHistSaveCurrent(false);
+}
+
+function toggleHistoryPanel() {
+  const p = document.getElementById('history-panel');
+  const open = p.classList.toggle('open');
+  if (open) renderHistoryList();
+}
+
+function renderHistoryList() {
+  const list = document.getElementById('history-list');
+  const all = _geoHistGetAll();
+  if (!all.length) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">暂无保存的绘图<br>点击「保存」或「新建」来添加</div>';
+    return;
+  }
+  list.innerHTML = all.slice().reverse().map(d => {
+    const date = new Date(d.updatedAt).toLocaleString('zh-CN');
+    const isCur = d.id === window._currentDrawingId;
+    const thumbHtml = d.thumb
+      ? `<img src="${d.thumb}" alt="缩略图">`
+      : '📐';
+    return `<div class="history-item${isCur?' ':''}${isCur?'style="border-color:#3b82f6;background:#eff6ff"':''}" onclick="loadDrawingFromHist('${d.id}')">
+      <div class="hist-thumb">${thumbHtml}</div>
+      <div class="hist-info">
+        <div class="hist-name">${d.name}${isCur?' <span style="color:#3b82f6;font-size:10px">(当前)</span>':''}</div>
+        <div class="hist-date">${date}</div>
+        <div class="hist-steps">${d.codeLogs.length} 步 AI 操作</div>
+      </div>
+      <button class="tb danger-btn" style="font-size:11px;height:26px;padding:0 7px;flex-shrink:0"
+        onclick="event.stopPropagation();deleteDrawingFromHist('${d.id}')">删除</button>
+    </div>`;
+  }).join('');
+}
+
+function loadDrawingFromHist(id) {
+  const all = _geoHistGetAll();
+  const d = all.find(x => x.id === id);
+  if (!d) { alert('记录不存在'); return; }
+  if (!confirm(`加载「${d.name}」？当前未保存内容将丢失。`)) return;
+  // 清空
+  JXG.JSXGraph.freeBoard(board);
+  undoStack=[]; redoStack=[]; _nameIdx=0;
+  try{_usedNames.clear();}catch(_){}
+  polyPts=[]; window._aiScope={};
+  updateUndoBtns(); updatePropsPanel(null);
+  initBoard(); setTool('move');
+  // 切换当前绘图
+  window._currentDrawingId = d.id;
+  window._currentDrawingName = d.name;
+  window._codeLogs = [];
+  const tag = document.getElementById('drawing-name-tag');
+  if (tag) tag.textContent = d.name;
+  // 回放代码（不记录到 _codeLogs，回放完再整体恢复）
+  let errs = 0;
+  const tmpLogs = [];
+  const origLog = window._codeLogs;
+  window._codeLogs = null; // 暂停日志
+  for (const code of (d.codeLogs || [])) {
+    try { _runAIcode(code); tmpLogs.push(code); }
+    catch(e) { errs++; console.warn('[loadDrawing] replay err:', e.message); }
+  }
+  window._codeLogs = tmpLogs; // 恢复已成功重放的代码列表
+  updateCount();
+  toggleHistoryPanel();
+  if (errs) alert(`绘图已加载，${errs} 步回放失败（可能是复杂代码依赖）`);
+}
+
+function deleteDrawingFromHist(id) {
+  const all = _geoHistGetAll();
+  const d = all.find(x => x.id === id);
+  if (!d) return;
+  if (!confirm(`删除「${d.name}」？`)) return;
+  _geoHistSave(all.filter(x => x.id !== id));
+  renderHistoryList();
+}
+// 页面加载时初始化绘图状态
+window._codeLogs = window._codeLogs || [];
+window._currentDrawingId = null;
+window._currentDrawingName = '';
+
+</script>
+
+<!-- ── Context Menu ── -->
+<div id="ctx-menu">
+  <div class="ctx-item" id="ctx-rename" onclick="ctxRename()">✏️ 重命名</div>
+  <div class="ctx-item" id="ctx-fix"    onclick="ctxFix()">📌 固定/取消</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" style="gap:5px;flex-wrap:wrap;padding:6px 10px">
+    <div id="ctx-colors" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxDelete()">🗑️ 删除</div>
+</div>
+
+<!-- ── 绘图历史面板 ── -->
+<div id="history-panel">
+  <div class="hist-hd">
+    <span class="hist-hd-title">📂 绘图历史</span>
+    <button class="tb" style="height:22px;padding:0 7px;font-size:12px" onclick="toggleHistoryPanel()">✕</button>
+  </div>
+  <div id="history-list">
+    <div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">暂无保存的绘图</div>
+  </div>
+  <div style="padding:8px;border-top:1px solid var(--border);display:flex;gap:6px;justify-content:flex-end;flex-shrink:0">
+    <button class="tb danger-btn" style="font-size:11px;height:26px" onclick="if(confirm('确认清空所有历史记录？')){localStorage.removeItem('geo_history');renderHistoryList();}">清空历史</button>
+  </div>
+</div>
+</body>

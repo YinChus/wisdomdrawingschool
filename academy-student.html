@@ -1,0 +1,1613 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>智绘书院 — 学生端</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- KaTeX 数学公式渲染 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="window.__katexReady=true;document.dispatchEvent(new Event('katex-ready'))"></script>
+<style>
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f1f5f9;font-size:15px}
+.sidebar{width:240px;min-width:240px;background:#1e1b4b;color:#c7d2fe}
+.exam-item{padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px;transition:.15s;display:flex;flex-direction:column;gap:2px}
+.exam-item:hover,.exam-item.active{background:#312e81;color:#e0e7ff}
+.q-card{background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:16px;border:1px solid #eef2f7}
+.q-card .katex{font-size:1.02em}
+/* ── 题目列表行（仿教师端）── */
+.q-list-item{background:#fff;border-radius:10px;border:1px solid #eef0f5;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s}
+.q-list-item:hover{border-color:#a5b4fc;box-shadow:0 4px 16px rgba(99,102,241,.12);transform:translateY(-1px)}
+.q-list-item .q-num{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:#6366f1;background:#eef2ff;border-radius:8px;padding:6px 12px;min-width:48px;text-align:center}
+.q-list-item .q-preview{flex:1;min-width:0;color:#334155;font-size:15px;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.q-list-item .q-preview .katex{font-size:1em}
+.q-list-item .q-tail{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.q-mini-tag{font-size:12px;padding:3px 8px;border-radius:6px;background:#f1f5f9;color:#64748b}
+.q-mini-tag.ok{background:#dcfce7;color:#166534}
+.cat-badge{font-size:12px;padding:3px 10px;border-radius:9999px;font-weight:600}
+/* ── 题目详情（仿教师端）── */
+.q-detail-wrap{padding:0 4px}
+.q-detail-toolbar{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #eef0f5;border-radius:12px;padding:12px 18px;margin-bottom:16px;position:sticky;top:0;z-index:5;box-shadow:0 1px 3px rgba(15,23,42,.04);gap:12px}
+.q-detail-toolbar .nav-btn{background:#f1f5f9;border:none;color:#475569;padding:7px 14px;border-radius:8px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:.15s;font-weight:500}
+.q-detail-toolbar .nav-btn:hover:not(:disabled){background:#e0e7ff;color:#4f46e5}
+.q-detail-toolbar .nav-btn:disabled{opacity:.4;cursor:not-allowed}
+.q-detail-toolbar .crumb{font-size:15px;color:#1e293b;font-weight:600;display:flex;align-items:center;gap:6px;min-width:0}
+.q-detail-toolbar .crumb .num{color:#6366f1;font-family:'JetBrains Mono',monospace;font-size:16px}
+.q-detail-toolbar .crumb .preview{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
+.q-detail-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:start}
+@media(max-width:1100px){.q-detail-grid{grid-template-columns:1fr}}
+/* 平板适配：窄屏下侧边栏可折叠、AI面板全屏、按钮加大 */
+@media(max-width:900px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:250;transform:translateX(-100%);transition:transform .25s}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-toggle{display:inline-flex !important;align-items:center;justify-content:center}
+  body{flex-direction:column}
+  main{width:100%}
+  .chat-panel{width:100vw !important;min-width:0 !important;max-width:100vw}
+  .btn{min-height:42px}
+  .btn-sm{min-height:36px;padding:8px 12px;font-size:13px}
+  .ggb-viewer{height:clamp(280px,46vh,460px)}
+}
+@media(max-width:640px){
+  .ggb-viewer{height:clamp(260px,42vh,400px)}
+}
+/* 触屏全局：按钮不产生点击高亮 */
+button,.btn,.q-list-item,.q-header,.cat-badge{-webkit-tap-highlight-color:transparent}
+button,.btn{touch-action:manipulation}
+.q-panel{background:#fff;border:1px solid #eef0f5;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.04);margin-bottom:16px}
+.q-panel-head{padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:15px;color:#1e293b;font-weight:600;background:linear-gradient(180deg,#fafbff,#fff)}
+.q-panel-body{padding:18px}
+.q-render-box{background:#fafbfd;border:1px solid #eef2f7;border-radius:10px;padding:18px 20px;font-size:16px;line-height:1.9;color:#0f172a;min-height:60px}
+.q-render-box .katex{font-size:1.08em}
+.q-render-box.empty{color:#94a3b8;font-style:italic;text-align:center;padding:24px}
+.exam-card{position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;cursor:pointer;transition:all .18s;box-shadow:0 1px 2px rgba(0,0,0,.04);min-height:170px;display:flex;flex-direction:column}
+.exam-card:hover{border-color:#6366f1;box-shadow:0 6px 18px rgba(99,102,241,.18);transform:translateY(-3px)}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:600}
+.home-tabs{display:inline-flex;background:#f1f5f9;padding:4px;border-radius:10px;gap:2px}
+.home-tab{padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:500;background:transparent;color:#64748b;transition:.15s}
+.home-tab.active{background:#6366f1;color:#fff}
+.home-search{padding:8px 14px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;width:240px;background:#fff;outline:none}
+.home-search:focus{border-color:#6366f1}
+.q-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;border-bottom:1px solid #f1f5f9}
+.q-body{padding:16px;display:none}
+.q-body.open{display:block}
+.cat-badge{font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:600}
+.btn{padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500;border:none;transition:.15s}
+.btn-primary{background:#6366f1;color:#fff}.btn-primary:hover{background:#4f46e5}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-ghost{background:transparent;border:1px solid #e2e8f0;color:#64748b}.btn-ghost:hover{background:#f1f5f9}
+.btn-red{background:#ef4444;color:#fff}
+/* Chat 侧边栏 */
+.chat-panel{position:fixed;right:0;top:0;bottom:0;width:min(560px,42vw);min-width:420px;background:#fff;box-shadow:-8px 0 32px rgba(15,23,42,.18);display:flex;flex-direction:column;transform:translateX(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);z-index:200;border-left:1px solid #e2e8f0}
+.chat-panel.open{transform:translateX(0)}
+.chat-header{padding:14px 18px;background:linear-gradient(135deg,#312e81 0%,#4338ca 100%);color:#fff;display:flex;align-items:center;justify-content:space-between}
+.chat-header .sub{font-size:12px;color:#c7d2fe;margin-top:2px}
+.chat-msgs{flex:1;overflow-y:auto;padding:18px;background:#f8fafc;display:flex;flex-direction:column;gap:10px}
+.chat-bubble{max-width:88%;padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.65;word-break:break-word}
+.chat-bubble.user{background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;margin-left:auto;border-bottom-right-radius:4px;box-shadow:0 2px 8px rgba(99,102,241,.25)}
+.chat-bubble.assistant{background:#fff;color:#1e293b;border:1px solid #e2e8f0;border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.chat-bubble .katex{font-size:1em}
+.chat-input-bar{border-top:1px solid #e2e8f0;padding:10px;background:#fff;display:flex;gap:8px;align-items:flex-end}
+.chat-input-bar textarea{flex:1;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:14px;resize:none;min-height:44px;max-height:140px;outline:none;font-family:inherit;line-height:1.5}
+.chat-input-bar textarea:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.chat-input-wrap{flex:1;border:1px solid #e2e8f0;border-radius:12px;background:#fff;display:flex;flex-direction:column;transition:.15s}
+.chat-input-wrap:focus-within{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.chat-input-wrap textarea{flex:1;border:none;border-radius:12px 12px 0 0;padding:12px 14px;font-size:14px;resize:none;min-height:72px;max-height:240px;outline:none;font-family:inherit;line-height:1.6;background:transparent}
+.chat-input-tools{display:flex;align-items:center;gap:6px;padding:6px 8px;border-top:1px solid #f1f5f9;background:#fafbff;border-radius:0 0 12px 12px}
+.chat-tool-btn{padding:5px 10px;font-size:12px;border-radius:6px;border:1px solid transparent;background:transparent;color:#64748b;cursor:pointer;transition:.15s}
+.chat-tool-btn:hover{background:#eef2ff;color:#4338ca}
+.chat-attachments{display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;border-top:1px solid #f1f5f9;background:#fafbff;max-height:140px;overflow-y:auto}
+.chat-attach-item{position:relative;width:62px;height:62px;border-radius:8px;overflow:hidden;border:1px solid #e2e8f0;background:#fff}
+.chat-attach-item img{width:100%;height:100%;object-fit:cover}
+.chat-attach-item .x{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+.chat-bubble img.chat-img{max-width:100%;max-height:280px;border-radius:8px;border:1px solid #e2e8f0;display:block;margin-top:6px;cursor:zoom-in}
+.quick-ask{font-size:12px;padding:4px 10px;border-radius:9999px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;transition:.15s}
+.quick-ask:hover{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}
+.chat-quick{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px;background:#fff}
+.chat-quick button{font-size:12px;padding:4px 10px;border-radius:9999px;border:1px solid #e2e8f0;background:#f8fafc;color:#475569;cursor:pointer;transition:.15s}
+.chat-quick button:hover{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}
+/* 反馈弹窗 */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:#fff;border-radius:14px;padding:24px;width:min(420px,92vw)}
+/* GeoGebra 播放器 */
+.ggb-viewer{background:#f8fafc;border-radius:8px;overflow:hidden;width:100%;height:clamp(320px,52vh,540px);touch-action:none}
+.step-btn{padding:10px 16px;border-radius:8px;font-size:13px;border:1px solid #e2e8f0;cursor:pointer;background:#fff;min-height:44px;min-width:44px;-webkit-tap-highlight-color:transparent}
+.step-btn:hover,.step-btn:active{background:#f1f5f9}
+.step-chip{display:inline-block;padding:8px 14px;border-radius:9999px;font-size:12px;background:#e0e7ff;color:#4f46e5;margin:3px;cursor:pointer;min-height:36px;line-height:1.2;-webkit-tap-highlight-color:transparent}
+.step-chip.active{background:#6366f1;color:#fff}
+.progress-bar{height:4px;background:#e2e8f0;border-radius:9999px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#10b981)}
+/* 手写笔记：覆盖整个题目详情页的可绘制层 */
+.note-overlay{position:absolute;left:0;top:0;width:100%;pointer-events:none;z-index:6;touch-action:none;display:block}
+.q-detail-wrap.note-on .note-overlay{pointer-events:auto;cursor:crosshair;background-image:linear-gradient(rgba(99,102,241,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,.08) 1px,transparent 1px);background-size:24px 24px;background-color:rgba(255,253,235,.18)}
+.q-detail-wrap.note-on .q-detail-toolbar,
+.q-detail-wrap.note-on .q-panel,
+.q-detail-wrap.note-on .q-list-item{pointer-events:none}
+/* 浮动笔记工具栏 */
+.note-floatbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:10px 14px;box-shadow:0 10px 32px rgba(15,23,42,.18);display:none;align-items:center;gap:8px;z-index:300;flex-wrap:wrap;max-width:calc(100vw - 40px)}
+.q-detail-wrap.note-on ~ .note-floatbar,
+.note-floatbar.open{display:flex}
+.note-tool-btn{padding:6px 12px;font-size:13px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer;color:#475569;transition:.15s}
+.note-tool-btn:hover{background:#eef2ff;color:#4338ca}
+.note-tool-btn.active{background:#6366f1;color:#fff;border-color:#6366f1}
+.note-color{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px #cbd5e1;transition:transform .1s}
+.note-color:hover{transform:scale(1.15)}
+.note-color.active{box-shadow:0 0 0 2px #6366f1}
+.note-size-input{width:90px;vertical-align:middle}
+.note-floatbar .sep{width:1px;height:22px;background:#e2e8f0}
+/* 笔记模式下，给页面顶部留个提示 */
+.note-mode-hint{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:rgba(99,102,241,.95);color:#fff;padding:8px 18px;border-radius:9999px;font-size:13px;z-index:300;box-shadow:0 6px 20px rgba(99,102,241,.4);display:none;animation:fadeIn .25s ease}
+.note-floatbar.open ~ .note-mode-hint,
+body.note-mode .note-mode-hint{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- ════ 侧边栏 ════ -->
+<aside class="sidebar flex flex-col h-screen overflow-hidden">
+  <div class="flex items-center gap-2 px-4 py-4 border-b border-indigo-900 cursor-pointer hover:bg-indigo-900/40" onclick="goHome()">
+    <span class="text-2xl">🎓</span>
+    <div>
+      <div class="font-bold text-white text-sm">智绘书院</div>
+      <div class="text-xs text-indigo-400" id="user-info">学生端</div>
+    </div>
+  </div>
+  <div class="flex-1 overflow-y-auto p-2">
+    <div class="px-2 mb-3 space-y-1">
+      <button onclick="goHome()" id="nav-home"
+        class="w-full text-left px-3 py-2 rounded-lg text-sm text-indigo-300 hover:bg-indigo-900 hover:text-white flex items-center gap-2 transition-colors">
+        <span>🏠</span><span>试卷首页</span>
+      </button>
+    </div>
+    <div class="flex items-center justify-between px-2 py-2">
+      <span class="text-indigo-400 text-xs font-medium tracking-wider">📜 试卷历史</span>
+      <button onclick="clearExamHistory()" class="text-xs text-indigo-400 hover:text-red-300" title="清空历史">清空</button>
+    </div>
+    <div id="exam-list"><div class="text-indigo-400 text-xs px-2 py-2">暂无浏览记录</div></div>
+  </div>
+  <div class="p-3 border-t border-indigo-900">
+    <button onclick="logout()" class="btn btn-ghost w-full text-sm text-indigo-400 border-indigo-800">退出登录</button>
+  </div>
+</aside>
+
+<!-- ════ 主内容 ════ -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden">
+  <header class="bg-white border-b px-4 sm:px-6 py-3 flex items-center justify-between gap-2">
+    <button onclick="document.querySelector('aside.sidebar').classList.toggle('open')" class="sidebar-toggle btn btn-ghost btn-sm" aria-label="菜单" style="display:none">☰</button>
+    <div id="exam-title" class="font-semibold text-slate-700 text-base sm:text-lg flex-1 truncate">请选择试卷</div>
+    <button onclick="toggleChat()" class="btn btn-primary btn-sm" id="chat-toggle-btn">💬 AI助手</button>
+  </header>
+
+  <div class="flex-1 overflow-y-auto p-6" id="content-area">
+    <div class="flex flex-col items-center justify-center h-full text-slate-400">
+      <div class="text-5xl mb-4">📖</div>
+      <div class="text-lg">加载中…</div>
+    </div>
+  </div>
+</main>
+
+<!-- ════ AI 聊天侧边栏 ════ -->
+<div class="chat-panel" id="chat-panel">
+  <div class="flex items-center justify-between px-4 py-3 border-b" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl">🤖</span>
+      <div>
+        <div class="font-semibold text-white text-sm">AI 数学助手</div>
+        <div class="text-xs text-indigo-200" id="chat-context-label">智能问答</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-1">
+      <button onclick="toggleChatHistory()" class="text-indigo-200 hover:text-white px-2 py-1 text-xs rounded hover:bg-white/10" title="历史会话">📚 历史</button>
+      <button onclick="clearChat()" class="text-indigo-200 hover:text-white px-2 py-1 text-xs rounded hover:bg-white/10" title="新对话">🆕 新会话</button>
+      <button onclick="toggleChat()" class="text-white text-2xl px-2 hover:bg-white/10 rounded" title="关闭">×</button>
+    </div>
+  </div>
+  <!-- 快捷追问 -->
+  <div class="px-3 py-2 border-b bg-slate-50 flex flex-wrap gap-1.5" id="quick-asks">
+    <button onclick="_quickAsk('请帮我讲讲解题思路')" class="quick-ask">💡 解题思路</button>
+    <button onclick="_quickAsk('给个提示就好，先不要直接告诉我答案')" class="quick-ask">🔍 提示</button>
+    <button onclick="_quickAsk('这道题考的是什么知识点？')" class="quick-ask">📖 知识点</button>
+    <button onclick="_quickAsk('给我一道类似的题目让我练习')" class="quick-ask">🎯 类似题</button>
+  </div>
+  <!-- 历史会话面板（默认折叠）-->
+  <div id="chat-history-panel" style="display:none;background:#fff;border-bottom:1px solid #e2e8f0;max-height:240px;overflow-y:auto">
+    <div class="px-3 py-2 text-xs text-slate-500 border-b bg-slate-50 flex justify-between items-center">
+      <span>📚 历史会话</span>
+      <button onclick="toggleChatHistory()" class="text-slate-400 hover:text-slate-700">收起</button>
+    </div>
+    <div id="chat-history-list" class="divide-y"></div>
+  </div>
+  <div class="chat-msgs" id="chat-messages">
+    <div class="chat-bubble assistant">你好！我是你的数学助手，有任何不懂的题目都可以问我。<br><span class="text-slate-400 text-xs">支持粘贴/上传截图哦~</span></div>
+  </div>
+  <!-- 附件预览 -->
+  <div id="chat-attachments" class="chat-attachments" style="display:none"></div>
+  <!-- 输入区 -->
+  <div class="chat-input-bar">
+    <div class="chat-input-wrap">
+      <textarea id="chat-input" rows="3" placeholder="输入问题…（Enter 发送 / Shift+Enter 换行 / Ctrl+V 粘贴截图）"></textarea>
+      <div class="chat-input-tools">
+        <button class="chat-tool-btn" title="上传图片" onclick="document.getElementById('chat-file-input').click()">📎 图片</button>
+        <button class="chat-tool-btn" title="截屏(请先用系统截图工具)" onclick="showToast('请用 Win+Shift+S 截屏后在输入框中按 Ctrl+V 粘贴','warn')">✂️ 截图</button>
+        <span class="flex-1"></span>
+        <span id="chat-char-count" class="text-xs text-slate-400"></span>
+        <button onclick="sendChat()" class="btn btn-primary btn-sm" id="chat-send-btn">发送 ↵</button>
+      </div>
+    </div>
+    <input type="file" id="chat-file-input" accept="image/*" multiple style="display:none" onchange="_chatPickFiles(this.files); this.value=''">
+  </div>
+</div>
+
+<!-- ════ 全局手写笔记浮动工具栏 ════ -->
+<div class="note-floatbar" id="note-floatbar">
+  <span style="font-size:13px;color:#6366f1;font-weight:600">✏️ 笔记模式</span>
+  <span class="sep"></span>
+  <button class="note-tool-btn active" data-tool="pen" onclick="noteSetTool(_noteCurQid,'pen',this)">✒️ 画笔</button>
+  <button class="note-tool-btn"        data-tool="eraser" onclick="noteSetTool(_noteCurQid,'eraser',this)">🧽 橡皮</button>
+  <span class="sep"></span>
+  <span class="note-color active" style="background:#0f172a" onclick="noteSetColor(_noteCurQid,'#0f172a',this)"></span>
+  <span class="note-color"        style="background:#dc2626" onclick="noteSetColor(_noteCurQid,'#dc2626',this)"></span>
+  <span class="note-color"        style="background:#2563eb" onclick="noteSetColor(_noteCurQid,'#2563eb',this)"></span>
+  <span class="note-color"        style="background:#16a34a" onclick="noteSetColor(_noteCurQid,'#16a34a',this)"></span>
+  <span class="note-color"        style="background:#f59e0b" onclick="noteSetColor(_noteCurQid,'#f59e0b',this)"></span>
+  <span class="note-color"        style="background:#a855f7" onclick="noteSetColor(_noteCurQid,'#a855f7',this)"></span>
+  <span class="sep"></span>
+  <label class="text-xs text-slate-500">粗细
+    <input type="range" min="1" max="20" value="3" class="note-size-input" oninput="noteSetSize(_noteCurQid,this.value)">
+  </label>
+  <span class="sep"></span>
+  <button class="note-tool-btn" onclick="noteUndo(_noteCurQid)">↶ 撤销</button>
+  <button class="note-tool-btn" onclick="noteClear(_noteCurQid)" style="color:#ef4444">🗑 清空</button>
+  <button class="note-tool-btn" style="background:#10b981;color:#fff;border-color:#10b981" onclick="noteDownload(_noteCurQid)">💾 导出</button>
+  <span class="sep"></span>
+  <button class="note-tool-btn" style="background:#f1f5f9" onclick="toggleNote(_noteCurQid)">✕ 退出笔记</button>
+</div>
+<div class="note-mode-hint" id="note-mode-hint">✏️ 笔记模式：直接在页面任意位置书写。退出后笔迹自动保存。</div>
+
+<!-- ════ 匿名反馈 Modal ════ -->
+<div id="feedback-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold">提交反馈</h3>
+      <button onclick="closeFeedback()" class="text-slate-400 text-xl">×</button>
+    </div>
+    <div class="mb-3">
+      <div class="text-sm text-slate-600 mb-2">反馈类型</div>
+      <div class="flex flex-wrap gap-2">
+        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="ftype" value="dont_understand" checked class="accent-indigo-500"><span class="text-sm">不理解</span></label>
+        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="ftype" value="too_hard"><span class="text-sm">太难了</span></label>
+        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="ftype" value="has_error"><span class="text-sm">有错误</span></label>
+        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="ftype" value="suggestion"><span class="text-sm">有建议</span></label>
+      </div>
+    </div>
+    <textarea id="feedback-content" class="w-full border rounded-lg p-2 text-sm resize-none focus:outline-none focus:border-indigo-400" style="height:80px" placeholder="详细描述（可选）"></textarea>
+    <div class="flex justify-end gap-2 mt-3">
+      <button onclick="closeFeedback()" class="btn btn-ghost">取消</button>
+      <button onclick="submitFeedback()" class="btn btn-primary">提交</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════ 状态 ════
+let currentUser = null;
+let currentExam = null;
+let chatSessionId = null;
+let chatQId = null;
+let chatExamId = null;
+let feedbackQId = null;
+let feedbackExamId = null;
+let ggbApps = {}; // qid -> GGBApplet api
+let stepState = {}; // qid -> current step index
+
+const MATH_STYLE = {
+  function:          {color:'#3b82f6',bg:'#dbeafe',label:'函数'},
+  derivative:        {color:'#8b5cf6',bg:'#ede9fe',label:'导数'},
+  solid_geometry:    {color:'#10b981',bg:'#d1fae5',label:'立体几何'},
+  conic_curve:       {color:'#f59e0b',bg:'#fef3c7',label:'圆锥曲线'},
+  trigonometric:     {color:'#ef4444',bg:'#fee2e2',label:'三角函数'},
+  vector:            {color:'#ec4899',bg:'#fce7f3',label:'向量'},
+  inequality:        {color:'#0ea5e9',bg:'#e0f2fe',label:'不等式'},
+  sequence:          {color:'#14b8a6',bg:'#ccfbf1',label:'数列'},
+  probability:       {color:'#f97316',bg:'#ffedd5',label:'概率统计'},
+  complex_number:    {color:'#6366f1',bg:'#e0e7ff',label:'复数'},
+  triangle_solution: {color:'#84cc16',bg:'#ecfccb',label:'解三角形'},
+  set_logic:         {color:'#64748b',bg:'#f1f5f9',label:'集合逻辑'},
+  other:             {color:'#64748b',bg:'#f1f5f9',label:'其他'},
+};
+
+// ════ 初始化 ════
+document.addEventListener('DOMContentLoaded', () => {
+  const raw = sessionStorage.getItem('academy_user');
+  if (!raw) { location.href = '/academy-login.html'; return; }
+  currentUser = JSON.parse(raw);
+  document.getElementById('user-info').textContent = currentUser.name || currentUser.username;
+  // 确保 anon_token
+  if(!localStorage.getItem('anon_token'))
+    localStorage.setItem('anon_token', 'anon_'+Math.random().toString(36).slice(2));
+  loadExams();
+  loadGgbScript();
+  // 聊天输入框：自动撑高 + Enter 发送 + Shift+Enter 换行 + Ctrl+V 粘贴图片
+  const ta = document.getElementById('chat-input');
+  if(ta){
+    ta.addEventListener('input', ()=>{
+      ta.style.height = 'auto';
+      ta.style.height = Math.min(ta.scrollHeight, 240) + 'px';
+      const cnt = document.getElementById('chat-char-count');
+      if(cnt) cnt.textContent = ta.value.length ? `${ta.value.length} 字` : '';
+    });
+    ta.addEventListener('keydown', e => {
+      if(e.key === 'Enter' && !e.shiftKey && !e.isComposing){
+        e.preventDefault();
+        sendChat();
+      }
+    });
+    ta.addEventListener('paste', e => {
+      const items = (e.clipboardData || {}).items || [];
+      const imgs = [];
+      for(const it of items){
+        if(it.kind === 'file' && it.type.startsWith('image/')){
+          const f = it.getAsFile();
+          if(f) imgs.push(f);
+        }
+      }
+      if(imgs.length){
+        e.preventDefault();
+        _chatPickFiles(imgs);
+        showToast(`已粘贴 ${imgs.length} 张图片`);
+      }
+    });
+  }
+});
+
+function logout() { sessionStorage.removeItem('academy_user'); location.href='/academy-login.html'; }
+
+// ════ KaTeX 渲染 ════
+function renderMathIn(rootEl){
+  if(!rootEl) return;
+  const fn = () => {
+    if(typeof renderMathInElement !== 'function') return;
+    try {
+      renderMathInElement(rootEl, {
+        delimiters:[
+          {left:'$$',right:'$$',display:true},
+          {left:'$',right:'$',display:false},
+          {left:'\\(',right:'\\)',display:false},
+          {left:'\\[',right:'\\]',display:true},
+        ],
+        throwOnError:false, errorColor:'#cc0000',
+      });
+    } catch(e){}
+  };
+  if(window.__katexReady) fn();
+  else document.addEventListener('katex-ready', fn, {once:true});
+}
+
+// 修正 LLM 产出的 LaTeX 转义异常
+function _fixLatex(s){
+  if(typeof s !== 'string') return s || '';
+  // JSON 控制字符还原（\b \t \f \n \r 被 JSON 解析掉了）
+  s = s.replace(/\u0008/g,'\\b').replace(/\u0009/g,'\\t').replace(/\u000c/g,'\\f');
+  s = s.replace(/\n(?=[A-Za-z]{2,}\b)/g,'\\n').replace(/\r(?=[A-Za-z]{2,}\b)/g,'\\r');
+  if(s.indexOf('\\') < 0) return s;
+  s = s.replace(/\\\\([{}|,;:])/g,'\\$1');
+  s = s.replace(/\\\\(?=(?:Big|big|Bigg|bigg|left|right|frac|sqrt|sum|int|prod|lim|infty|cdot|times|leq|geq|neq|in|notin|subset|supset|cup|cap|setminus|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|sigma|phi|omega|sin|cos|tan|log|ln|exp|max|min|mid|parallel|perp|rightarrow|leftarrow|to|mathbb|mathcal|mathrm|mathbf|text|overline|underline|hat|tilde|bar|vec|boldsymbol|nabla|partial|forall|exists|le|ge|ne|cdots|ldots)\b)/g,'\\');
+  s = s.replace(/\\ext\{/g,'\\text{');
+  s = s.replace(/\\oldsymbol\{/g,'\\boldsymbol{');
+  s = s.replace(/\\rac\{/g,'\\frac{');
+  return s;
+}
+
+// ════ 试卷列表（侧边栏 + 主区卡片首页） ════
+let _allExams = [];
+let _examFilter = 'all';
+let _examSearch = '';
+
+async function loadExams() {
+  const r = await fetch('/api/academy/student/exams');
+  const data = await r.json();
+  _allExams = Array.isArray(data) ? data : (data.exams || []);
+  renderSidebarExams();
+  if(!currentExam) renderHome();
+}
+
+function renderSidebarExams(){
+  const el = document.getElementById('exam-list');
+  const hist = _loadExamHistory();
+  if(!hist.length){
+    el.innerHTML = '<div class="text-indigo-400 text-xs px-2 py-3 leading-relaxed">暂无浏览记录<br><span class="text-indigo-500">在首页点击试卷开始</span></div>';
+    return;
+  }
+  el.innerHTML = hist.map(h => {
+    const meta = _allExams.find(e => e.id === h.id) || {};
+    const t = _formatRelTime(h.lastAt);
+    return `
+      <div class="exam-item ${currentExam?.id===h.id?'active':''}" onclick="selectExam('${h.id}')" title="${escHtml(meta.title||h.title||'')}">
+        <div class="truncate font-medium text-sm">${escHtml(meta.title || h.title || '未命名')}</div>
+        <div class="text-xs text-indigo-400 flex items-center justify-between mt-0.5">
+          <span>${meta.question_count||h.question_count||0} 题</span>
+          <span class="text-indigo-500">${t}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ════ 试卷历史 (localStorage) ════
+const _HIST_KEY = 'student-exam-history';
+const _HIST_MAX = 30;
+
+function _loadExamHistory(){
+  try{ return JSON.parse(localStorage.getItem(_HIST_KEY) || '[]'); }
+  catch(_){ return []; }
+}
+function _saveExamHistory(arr){
+  try{ localStorage.setItem(_HIST_KEY, JSON.stringify(arr.slice(0, _HIST_MAX))); }catch(_){}
+}
+function _pushExamHistory(exam){
+  if(!exam || !exam.id) return;
+  const list = _loadExamHistory().filter(x => x.id !== exam.id);
+  list.unshift({
+    id: exam.id,
+    title: exam.title || '未命名',
+    question_count: exam.question_count || (exam.questions||[]).length,
+    lastAt: Date.now(),
+  });
+  _saveExamHistory(list);
+}
+function clearExamHistory(){
+  if(!confirm('清空所有浏览历史？')) return;
+  _saveExamHistory([]);
+  renderSidebarExams();
+  showToast('历史已清空');
+}
+function _formatRelTime(ts){
+  if(!ts) return '';
+  const diff = (Date.now() - ts) / 1000;
+  if(diff < 60) return '刚刚';
+  if(diff < 3600) return Math.floor(diff/60) + '分钟前';
+  if(diff < 86400) return Math.floor(diff/3600) + '小时前';
+  if(diff < 86400*7) return Math.floor(diff/86400) + '天前';
+  const d = new Date(ts);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
+function renderHome(){
+  const area = document.getElementById('content-area');
+  const list = _allExams.filter(e => {
+    if(_examFilter==='answered' && !e.has_answer) return false;
+    if(_examFilter==='solution' && !e.has_solutions) return false;
+    if(_examSearch && !(e.title||'').toLowerCase().includes(_examSearch.toLowerCase())) return false;
+    return true;
+  });
+  const cards = list.map(e=>{
+    const subj = escHtml(e.subject||'数学');
+    const time = e.published_at ? e.published_at.slice(0,10) : '';
+    const tags = [
+      e.has_answer    ? '<span class="badge" style="background:#d1fae5;color:#065f46">含答案</span>' : '',
+      e.has_solutions ? '<span class="badge" style="background:#e0e7ff;color:#4338ca">含解析</span>' : '',
+    ].join(' ');
+    return `
+      <div class="exam-card" onclick="selectExam('${e.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px">
+          <div style="font-size:34px;line-height:1">📘</div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">${tags}</div>
+        </div>
+        <div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:42px">
+          ${escHtml(e.title||'未命名')}
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748b;margin-top:12px;padding-top:10px;border-top:1px dashed #e2e8f0">
+          <span>📝 ${e.question_count||0} 题 · ${subj}</span>
+          <span>${time}</span>
+        </div>
+      </div>`;
+  }).join('');
+  const tabBtn = (k,label,n) => `<button class="home-tab ${_examFilter===k?'active':''}" onclick="_setHomeFilter('${k}')">${label}<span style="opacity:.7"> (${n})</span></button>`;
+  const nAns = _allExams.filter(e=>e.has_answer).length;
+  const nSol = _allExams.filter(e=>e.has_solutions).length;
+  area.innerHTML = `
+    <div style="padding:0 4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:16px;flex-wrap:wrap">
+        <h1 style="font-size:24px;font-weight:600;color:#1e293b;margin:0">📚 我的试卷</h1>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div class="home-tabs">
+            ${tabBtn('all','全部',_allExams.length)}
+            ${tabBtn('answered','含答案',nAns)}
+            ${tabBtn('solution','含解析',nSol)}
+          </div>
+          <input type="text" class="home-search" placeholder="🔍 搜索试卷标题…"
+                 oninput="_setHomeSearch(this.value)" value="${escHtml(_examSearch)}">
+        </div>
+      </div>
+      ${list.length===0
+        ? `<div style="text-align:center;color:#94a3b8;padding:80px 0;font-size:14px">${_allExams.length===0?'暂无发布的试卷，请等待老师发布':'此分类下暂无试卷'}</div>`
+        : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px">${cards}</div>`
+      }
+    </div>`;
+  area.scrollTop = 0;
+}
+
+function _setHomeFilter(k){ _examFilter = k; renderHome(); }
+function _setHomeSearch(v){
+  _examSearch = v;
+  // 仅刷新卡片网格，不重建整个 DOM 以保留输入焦点
+  const area = document.getElementById('content-area');
+  const grid = area.querySelector('div[style*="grid-template-columns"]');
+  if(!grid) { renderHome(); return; }
+  const list = _allExams.filter(e => {
+    if(_examFilter==='answered' && !e.has_answer) return false;
+    if(_examFilter==='solution' && !e.has_solutions) return false;
+    if(_examSearch && !(e.title||'').toLowerCase().includes(_examSearch.toLowerCase())) return false;
+    return true;
+  });
+  if(!list.length){ renderHome(); return; }
+  grid.innerHTML = list.map(e=>`
+      <div class="exam-card" onclick="selectExam('${e.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px">
+          <div style="font-size:34px;line-height:1">📘</div>
+        </div>
+        <div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:42px">
+          ${escHtml(e.title||'未命名')}
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748b;margin-top:12px;padding-top:10px;border-top:1px dashed #e2e8f0">
+          <span>📝 ${e.question_count||0} 题</span>
+          <span>${(e.published_at||'').slice(0,10)}</span>
+        </div>
+      </div>`).join('');
+}
+
+function goHome(){
+  currentExam = null;
+  _detailQid = null;
+  document.getElementById('exam-title').textContent = '我的试卷';
+  renderSidebarExams();
+  renderHome();
+}
+
+async function selectExam(id) {
+  const r = await fetch(`/api/academy/student/exams/${id}`);
+  const data = await r.json();
+  currentExam = data.exam || data;
+  chatExamId = id;
+  _detailQid = null;
+  // 异步拉取答案/解析并合并到题目中
+  try{
+    const ar = await fetch(`/api/academy/student/exams/${id}/answers`);
+    if(ar.ok){
+      const ad = await ar.json();
+      currentExam._answerDoc = ad.answer_content || '';
+      currentExam._answerName = ad.answer_original_name || '';
+      const map = {};
+      (ad.question_answers||[]).forEach(x => { map[x.id] = x; });
+      (currentExam.questions||[]).forEach(q => {
+        const a = map[q.id];
+        if(a){ q.answer = a.answer || ''; q.solution = a.solution || ''; }
+      });
+    }
+  }catch(e){ console.warn('拉取答案失败', e); }
+  document.getElementById('exam-title').textContent = currentExam.title || '未命名试卷';
+  _pushExamHistory(currentExam);
+  renderQuestions();
+  renderSidebarExams();
+}
+
+// ════ 渲染：题目列表 / 题目详情（仿教师端）════
+let _detailQid = null;
+
+function renderQuestions() {
+  const qs = currentExam.questions || [];
+  const area = document.getElementById('content-area');
+  if(!qs.length){
+    area.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <button onclick="goHome()" class="btn btn-ghost btn-sm">← 返回试卷列表</button>
+      </div>
+      <div class="text-slate-400 text-center py-20">暂无题目</div>`;
+    return;
+  }
+  if(_detailQid){
+    const q = qs.find(x => String(x.id||x.number) === String(_detailQid));
+    if(q){ renderQuestionDetail(q); return; }
+    _detailQid = null;
+  }
+  // 列表视图：仅显示原题（过滤掉变式题，变式题显示在详情页里）
+  const mainQs = qs.filter(q => !q.is_variant);
+  const variantCountByParent = {};
+  qs.forEach(q => {
+    if(q.is_variant && q.source_qid){
+      variantCountByParent[q.source_qid] = (variantCountByParent[q.source_qid]||0) + 1;
+    }
+  });
+  area.innerHTML = `
+    <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
+      <div class="flex items-center gap-3">
+        <button onclick="goHome()" class="btn btn-ghost btn-sm">← 返回试卷列表</button>
+        <h2 class="font-semibold text-lg text-slate-700">${escHtml(currentExam.title||'未命名')}</h2>
+      </div>
+      <div class="text-sm text-slate-500">共 <b class="text-slate-700">${mainQs.length}</b> 道题，点击进入</div>
+    </div>
+    <div>${mainQs.map((q,i) => buildQListRow(q, i, variantCountByParent[q.id]||0)).join('')}</div>
+  `;
+  renderMathIn(area);
+}
+
+function buildQListRow(q, i, vCount) {
+  const cat = q.category || 'other';
+  const style = MATH_STYLE[cat] || MATH_STYLE.other;
+  const qid = q.id || String(q.number || i+1);
+  const hasViz = !!q.geogebra_code;
+  const hasSol = !!q.has_solution;
+  return `
+    <div class="q-list-item" onclick="openQuestionDetail('${qid}')">
+      <div class="q-num">Q${q.number||i+1}</div>
+      <span class="cat-badge" style="background:${style.bg};color:${style.color}">${style.label}</span>
+      <div class="q-preview">${escHtml(_fixLatex(q.content||'(空)'))}</div>
+      <div class="q-tail">
+        ${vCount ? `<span class="q-mini-tag" style="background:#fef3c7;color:#92400e">+${vCount} 变式</span>` : ''}
+        ${hasSol ? '<span class="q-mini-tag ok">📖解析</span>' : ''}
+        ${hasViz ? '<span class="q-mini-tag ok">📐图</span>' : ''}
+        <svg class="w-4 h-4 text-slate-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
+      </div>
+    </div>`;
+}
+
+function openQuestionDetail(qid){
+  _detailQid = qid;
+  renderQuestions();
+  document.getElementById('content-area').scrollTop = 0;
+}
+
+function backToQuestionList(){
+  _detailQid = null;
+  renderQuestions();
+}
+
+function gotoSiblingQuestion(delta){
+  // 仅在主题之间切换（跳过变式）
+  const qs = (currentExam.questions || []).filter(q => !q.is_variant);
+  const idx = qs.findIndex(x => String(x.id||x.number) === String(_detailQid));
+  if(idx < 0) return;
+  const next = qs[idx + delta];
+  if(next) openQuestionDetail(next.id || String(next.number));
+}
+
+function renderQuestionDetail(q){
+  const cat = q.category || 'other';
+  const style = MATH_STYLE[cat] || MATH_STYLE.other;
+  const qid = q.id || String(q.number);
+  const allQs = currentExam.questions || [];
+  const qs = allQs.filter(x => !x.is_variant);
+  const idx = qs.findIndex(x => String(x.id||x.number) === String(qid));
+  const total = qs.length;
+  const hasViz = !!q.geogebra_code;
+  const snaps = parseSnaps(q.geogebra_code);
+  // 本题的变式题（AI 生成）
+  const variants = allQs.filter(x => x.is_variant && x.source_qid === q.id);
+  // 如果当前是变式题，找出原题作为面包屑提示
+  const parentQ = q.is_variant && q.source_qid
+    ? allQs.find(x => x.id === q.source_qid) : null;
+
+  const optionsHtml = (q.options && q.options.length)
+    ? `<div class="mt-4">
+        <div class="text-sm text-slate-500 mb-2 font-semibold">选项</div>
+        <div class="grid grid-cols-1 gap-2">
+          ${q.options.map((v,k)=>`
+            <div class="flex gap-3 items-start" style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;font-size:16px;line-height:1.7">
+              <span class="font-bold text-indigo-500" style="min-width:28px">${String.fromCharCode(65+k)}.</span>
+              <span class="flex-1">${escHtml(_fixLatex(v))}</span>
+            </div>`).join('')}
+        </div>
+      </div>` : '';
+
+  const area = document.getElementById('content-area');
+  const isVariant = !!q.is_variant;
+  area.innerHTML = `
+  <div class="q-detail-wrap">
+    <div class="q-detail-toolbar">
+      <div class="flex items-center gap-3" style="min-width:0;flex:1">
+        <button class="nav-btn" onclick="backToQuestionList()">← 返回列表</button>
+        ${isVariant && parentQ
+          ? `<button class="nav-btn" onclick="openQuestionDetail('${parentQ.id}')" style="background:#fef3c7;color:#92400e">↑ 回到原题 Q${parentQ.number||''}</button>` : ''}
+        <span class="cat-badge" style="background:${style.bg};color:${style.color}">${style.label}</span>
+        ${isVariant ? '<span class="cat-badge" style="background:#fef3c7;color:#92400e">变式</span>' : ''}
+        <span class="crumb">
+          <span class="num">${isVariant ? '变式' : 'Q'+(q.number||idx+1)}</span>
+          <span class="preview">${escHtml(_fixLatex((q.content||'').slice(0,80)))}${(q.content||'').length>80?'…':''}</span>
+        </span>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        ${isVariant ? '' : `<span class="text-sm text-slate-400">${idx+1} / ${total}</span>`}
+        <button class="nav-btn" onclick="askAI('${qid}')" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff">💬 问 AI</button>
+        <button class="nav-btn" onclick="gotoSiblingQuestion(-1)" ${(isVariant||idx<=0)?'disabled':''}>← 上一题</button>
+        <button class="nav-btn" onclick="gotoSiblingQuestion(1)" ${(isVariant||idx>=total-1)?'disabled':''}>下一题 →</button>
+      </div>
+    </div>
+
+    <div class="q-detail-grid">
+      <!-- 左：题目内容 + 答案/解析 -->
+      <div>
+        <div class="q-panel">
+          <div class="q-panel-head"><span>📖 题目内容</span></div>
+          <div class="q-panel-body">
+            <div class="q-render-box ${q.content?'':'empty'}">${q.content?escHtml(_fixLatex(q.content)).replace(/\n/g,'<br>'):'(空)'}</div>
+            ${optionsHtml}
+          </div>
+        </div>
+
+        <div class="q-panel">
+          <div class="q-panel-head">
+            <span>💡 解析 / 答案</span>
+            ${currentExam.allow_view_answer
+              ? `<button class="btn btn-ghost btn-sm" onclick="toggleStudentSolution('${qid}')" id="sol-toggle-${qid}">👁 查看解析</button>`
+              : `<span class="text-xs text-amber-600">🔒 教师暂未开放</span>`}
+          </div>
+          <div class="q-panel-body">
+            ${currentExam.allow_view_answer ? `
+            <div id="sol-content-${qid}" class="hidden">
+              <div class="q-render-box" style="background:#fefce8;border-color:#fde68a">
+                ${q.solution
+                  ? escHtml(_fixLatex(q.solution)).replace(/\n/g,'<br>')
+                  : (q.answer ? '答案：'+escHtml(_fixLatex(q.answer)) : '<span class="text-slate-400 italic">暂无解析</span>')}
+              </div>
+            </div>
+            <div id="sol-locked-${qid}" class="text-center text-slate-400 py-8">
+              <div class="text-3xl mb-2">🔒</div>
+              <div class="text-sm">独立思考完成后，点击上方「查看解析」展开</div>
+            </div>
+            ` : `
+            <div class="text-center text-slate-500 py-6">
+              <div class="text-3xl mb-2">🤐</div>
+              <div class="text-sm">教师暂未开放本卷答案与解析</div>
+              <div class="text-xs text-slate-400 mt-1">可使用右侧 AI 助手讨论思路</div>
+            </div>
+            `}
+          </div>
+        </div>
+
+        ${variants.length ? `
+        <div class="q-panel">
+          <div class="q-panel-head">
+            <span>🌱 拓展变式题 <span class="text-xs text-slate-400 font-normal ml-1">(由 AI 基于本题生成)</span></span>
+            <span class="q-mini-tag" style="background:#fef3c7;color:#92400e">${variants.length} 道</span>
+          </div>
+          <div class="q-panel-body" style="padding:10px 12px">
+            ${variants.map((v,vi) => {
+              const meta = v.variant_meta || {};
+              const tagDiff = meta.difficulty ? `<span class="q-mini-tag">${escHtml(meta.difficulty)}</span>` : '';
+              const tagStrat = meta.strategy ? `<span class="q-mini-tag">${escHtml(meta.strategy)}</span>` : '';
+              return `
+                <div class="q-list-item" style="margin-bottom:8px" onclick="openQuestionDetail('${v.id}')">
+                  <div class="q-num" style="background:#fef3c7;color:#92400e">变${vi+1}</div>
+                  <div class="q-preview">${escHtml(_fixLatex(v.content||'(空)'))}</div>
+                  <div class="q-tail">
+                    ${tagDiff}${tagStrat}
+                    <svg class="w-4 h-4 text-slate-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
+
+        <!-- 操作按钮 -->
+        <div class="flex gap-2 flex-wrap mb-4">
+          <button onclick="toggleNote('${qid}')" class="btn btn-primary btn-sm" id="note-toggle-${qid}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff">✏️ 在本页做笔记</button>
+          <button onclick="openFeedback('${qid}','${currentExam.id}')" class="btn btn-ghost btn-sm text-slate-500">📣 反馈</button>
+        </div>
+      </div>
+
+      <!-- 右：几何画板 + 教学资源 -->
+      <div>
+        <div class="q-panel">
+          <div class="q-panel-head">
+            <span>📐 几何画板${hasViz?' (交互)':''}</span>
+            ${hasViz && snaps.length ? `
+            <div class="flex gap-2">
+              <button onclick="prevStep('${qid}')" class="btn btn-ghost btn-sm">◀</button>
+              <span class="text-xs text-slate-500 self-center" id="step-label-${qid}">步骤 1/${snaps.length}</span>
+              <button onclick="nextStep('${qid}')" class="btn btn-ghost btn-sm">▶</button>
+            </div>` : ''}
+          </div>
+          <div class="q-panel-body" style="padding:0">
+            ${hasViz
+              ? `<div id="ggb-view-${qid}" class="ggb-viewer"></div>`
+              : `<div class="q-render-box empty" style="margin:18px">本题暂无几何图形</div>`}
+          </div>
+        </div>
+
+        <div class="q-panel">
+          <div class="q-panel-head"><span>🎬 教学资源</span></div>
+          <div class="q-panel-body">
+            <div id="res-area-${qid}" class="text-slate-400 text-center text-sm py-4">加载中…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 全页面手写笔记叠加层（默认 pointer-events:none，开启笔记模式后可绘制）-->
+    <canvas class="note-overlay" id="note-overlay-${qid}"></canvas>
+  </div>`;
+
+  renderMathIn(area);
+  if(hasViz) initGgbViewer(qid);
+  loadResources(qid);
+  // 初始化笔记叠加层（恢复历史笔迹），稍后再做一次 resize 以适配 KaTeX/GGB 异步布局
+  setTimeout(() => _noteInit(qid), 50);
+  setTimeout(() => _noteResize(qid), 600);
+  setTimeout(() => _noteResize(qid), 1500);
+}
+
+function toggleStudentSolution(qid){
+  const c = document.getElementById(`sol-content-${qid}`);
+  const lock = document.getElementById(`sol-locked-${qid}`);
+  const btn = document.getElementById(`sol-toggle-${qid}`);
+  if(!c) return;
+  const opening = c.classList.contains('hidden');
+  c.classList.toggle('hidden');
+  if(lock) lock.classList.toggle('hidden', opening);
+  if(btn) btn.textContent = opening ? '🙈 收起解析' : '👁 查看解析';
+  if(opening) renderMathIn(c);
+}
+
+function buildQCard(q, i) {
+  const cat = q.category || 'other';
+  const style = MATH_STYLE[cat] || MATH_STYLE.other;
+  const qid = String(q.id || q.number || i+1);
+  const hasViz = !!(q.geogebra_code);
+  const snaps = q.viz_snapshots || [];
+
+  return `
+  <div class="q-card" id="qcard-s-${qid}">
+    <div class="q-header" onclick="toggleQ('${qid}')">
+      <span class="text-slate-500 text-sm font-mono w-8">Q${q.number||i+1}</span>
+      <span class="cat-badge" style="background:${style.bg};color:${style.color}">${style.label}</span>
+      <span class="flex-1 text-sm text-slate-700 truncate">${escHtml(_fixLatex(q.content||'').slice(0,80))}</span>
+      ${hasViz?'<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">有图</span>':''}
+      <svg class="w-4 h-4 text-slate-400 transition" id="sarrow-${qid}" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+    </div>
+    <div class="q-body" id="qbody-s-${qid}">
+      <!-- 题目 -->
+      <div class="text-[15px] text-slate-800 leading-relaxed mb-3 p-4 bg-slate-50 rounded-lg">
+        ${escHtml(_fixLatex(q.content||'')).replace(/\n/g,'<br>')}
+      </div>
+
+      ${q.options && q.options.length ? `
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        ${q.options.map(o=>`<div class="p-2 bg-slate-50 rounded text-sm">${escHtml(_fixLatex(o))}</div>`).join('')}
+      </div>
+      ` : ''}
+
+      <!-- GeoGebra 可视化 -->
+      ${hasViz ? `
+      <div class="mb-4 border rounded-xl overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-2 bg-indigo-50">
+          <span class="text-sm font-medium text-indigo-700">📐 交互式图形</span>
+          <div class="flex gap-2">
+            <button onclick="prevStep('${qid}')" class="step-btn">◀ 上一步</button>
+            <span class="text-xs text-slate-500 self-center" id="step-label-${qid}">步骤 1/${snaps.length||1}</span>
+            <button onclick="nextStep('${qid}')" class="step-btn">下一步 ▶</button>
+          </div>
+        </div>
+        <div id="ggb-view-${qid}" class="ggb-viewer"></div>
+      </div>
+      ` : ''}
+
+      <!-- 资源（视频/音频）-->
+      <div id="res-area-${qid}"></div>
+
+      <!-- 答案/解析（折叠）-->
+      <div class="mb-3">
+        <button onclick="toggleSolution('${qid}')" class="btn btn-ghost btn-sm">
+          👁 查看解析
+        </button>
+        <div id="solution-${qid}" class="hidden mt-2 p-4 bg-green-50 rounded-lg text-[14px] text-slate-700 leading-relaxed">
+          ${q.solution ? escHtml(_fixLatex(q.solution)).replace(/\n/g,'<br>') : (q.answer ? '答案：'+escHtml(_fixLatex(q.answer)) : '暂无解析')}
+        </div>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="askAI('${qid}')" class="btn btn-primary btn-sm">💬 问AI助手</button>
+        <button onclick="toggleNote('${qid}')" class="btn btn-ghost btn-sm" id="note-toggle-${qid}">✏️ 手写笔记</button>
+        <button onclick="openFeedback('${qid}','${currentExam.id}')" class="btn btn-ghost btn-sm text-slate-500">📣 反馈</button>
+      </div>
+
+      <!-- 手写笔记画板 -->
+      <div class="note-wrap" id="note-wrap-${qid}">
+        <div class="note-toolbar">
+          <button class="note-tool-btn active" data-tool="pen" onclick="noteSetTool('${qid}','pen',this)">✒️ 画笔</button>
+          <button class="note-tool-btn"        data-tool="eraser" onclick="noteSetTool('${qid}','eraser',this)">🧽 橡皮</button>
+          <span class="text-slate-300">|</span>
+          <span class="note-color active" style="background:#0f172a" onclick="noteSetColor('${qid}','#0f172a',this)"></span>
+          <span class="note-color"        style="background:#dc2626" onclick="noteSetColor('${qid}','#dc2626',this)"></span>
+          <span class="note-color"        style="background:#2563eb" onclick="noteSetColor('${qid}','#2563eb',this)"></span>
+          <span class="note-color"        style="background:#16a34a" onclick="noteSetColor('${qid}','#16a34a',this)"></span>
+          <span class="note-color"        style="background:#f59e0b" onclick="noteSetColor('${qid}','#f59e0b',this)"></span>
+          <span class="note-color"        style="background:#a855f7" onclick="noteSetColor('${qid}','#a855f7',this)"></span>
+          <span class="text-slate-300">|</span>
+          <label class="text-xs text-slate-500">粗细
+            <input type="range" min="1" max="20" value="3" class="note-size-input align-middle"
+              oninput="noteSetSize('${qid}',this.value)">
+          </label>
+          <span class="flex-1"></span>
+          <button class="note-tool-btn" onclick="noteUndo('${qid}')">↶ 撤销</button>
+          <button class="note-tool-btn" onclick="noteClear('${qid}')" style="color:#ef4444">🗑 清空</button>
+          <button class="note-tool-btn" style="background:#10b981;color:#fff;border-color:#10b981" onclick="noteDownload('${qid}')">💾 保存图片</button>
+        </div>
+        <div class="note-canvas-host">
+          <canvas id="note-canvas-${qid}" height="360"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+function toggleQ(qid) {
+  const body = document.getElementById(`qbody-s-${qid}`);
+  const arrow = document.getElementById(`sarrow-${qid}`);
+  const open = body.classList.toggle('open');
+  if(arrow) arrow.style.transform = open?'rotate(180deg)':'';
+  if(open){
+    loadResources(qid);
+    initGgbViewer(qid);
+    renderMathIn(body);
+  }
+}
+
+function toggleSolution(qid) {
+  const el = document.getElementById(`solution-${qid}`);
+  el.classList.toggle('hidden');
+  if(!el.classList.contains('hidden')) renderMathIn(el);
+}
+
+// ════ 资源加载 ════
+async function loadResources(qid) {
+  const area = document.getElementById(`res-area-${qid}`);
+  if(!area || area.dataset.loaded) return;
+  area.dataset.loaded = '1';
+  try {
+    const r = await fetch(`/api/academy/questions/${qid}/resources`);
+    const list = await r.json();
+    if(!list.length) return;
+    area.innerHTML = `<div class="mb-3 space-y-2">` +
+      list.map(res => buildResourcePlayer(res)).join('') +
+    `</div>`;
+  } catch(e){}
+}
+
+function buildResourcePlayer(res) {
+  const url = res.url;
+  if(res.resource_type === 'video') return `
+    <div class="rounded-lg overflow-hidden bg-black">
+      <video controls class="w-full max-h-60" src="${url}">你的浏览器不支持视频播放</video>
+      <div class="text-xs text-slate-400 p-2">${escHtml(res.original_name)}</div>
+    </div>`;
+  if(res.resource_type === 'audio') return `
+    <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+      <span class="text-2xl">🔊</span>
+      <div class="flex-1">
+        <div class="text-xs text-slate-500 mb-1">${escHtml(res.original_name)}</div>
+        <audio controls class="w-full"><source src="${url}">不支持音频</audio>
+      </div>
+    </div>`;
+  if(res.resource_type === 'image') return `
+    <div class="rounded-lg overflow-hidden">
+      <img src="${url}" alt="${escHtml(res.original_name)}" class="max-w-full max-h-80 object-contain mx-auto block rounded">
+    </div>`;
+  return `<a href="${url}" target="_blank" class="text-indigo-500 text-sm hover:underline">📎 ${escHtml(res.original_name)}</a>`;
+}
+
+// ════ GeoGebra 查看器 ════
+let _ggbLoaded = false;
+let _ggbCallbacks = [];
+
+function loadGgbScript() {
+  const s = document.createElement('script');
+  s.src = 'https://cdn.geogebra.org/apps/deployggb.js';
+  s.onload = () => { _ggbLoaded = true; _ggbCallbacks.forEach(fn=>fn()); _ggbCallbacks=[]; };
+  document.head.appendChild(s);
+}
+
+function withGgb(fn) {
+  if(_ggbLoaded) fn(); else _ggbCallbacks.push(fn);
+}
+
+function initGgbViewer(qid) {
+  const q = findQ(qid);
+  if(!q || !q.geogebra_code) return;
+  const containerId = `ggb-view-${qid}`;
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  // 如果容器已经被 GeoGebra 注入过（含 <iframe> 或 <article>），则跳过
+  if(ggbApps[qid] && container.querySelector('iframe, article')) return;
+  // 否则视为容器已被重建（详情视图切换后），需重新 inject
+  if(ggbApps[qid]) {
+    try { delete ggbApps[qid]; } catch(_) { ggbApps[qid] = null; }
+    container.innerHTML = '';
+  }
+
+  // 自动判定引擎：教师未显式标 viz_engine 时，按代码内容嗅探 3D 命令
+  const code = q.geogebra_code || '';
+  const looks3D = /\b(?:Sphere|Cube|Cone|Cylinder|Tetrahedron|Octahedron|Dodecahedron|Icosahedron|Pyramid|Prism|Surface|Plane|InfiniteCone|InfiniteCylinder)\b\s*\(|f\s*\(\s*x\s*,\s*y\s*\)\s*=|\([-\d.\s]+,[-\d.\s]+,[-\d.\s]+\)/i.test(code);
+  const engine = (q.viz_engine === '3d' || (!q.viz_engine && looks3D)) ? '3d' : 'graphing';
+  withGgb(()=>{
+    // 用 classic app 才能真正按 perspective 隐藏代数视图
+    // （graphing/3d 这些 "calculator suite" 应用会强制保留代数面板）
+    const persp = engine === '3d' ? 'T' : 'G'; // T=仅3D图形, G=仅2D图形
+    const params = {
+      appName: 'classic', width: container.clientWidth || 600, height: container.clientHeight || 380,
+      perspective: persp,
+      showMenuBar:false, showToolBar:false, showAlgebraInput:false,
+      showSidePanel:false, showToolBarHelp:false, showZoomButtons:true,
+      showResetIcon:false, useBrowserForJS:false,
+      enableLabelDrags:false, enableShiftDragZoom:true, enableRightClick:false,
+      appletOnLoad(api){
+        ggbApps[qid] = api;
+        // 关闭原生错误弹窗，避免学生界面被 alert 卡住
+        try { api.setErrorDialogsActive(false); } catch(_){}
+        // 双保险：load 后再强制一次 perspective
+        try { api.setPerspective(persp); } catch(_){}
+        // 关闭所有标签自动显示
+        try { api.setLabelVisible && api.getAllObjectNames().forEach(n=>api.setLabelVisible(n,false)); } catch(_){}
+        // 默认显示完整图（最后一步），用户可用 ◀ 回看分步
+        const snaps = parseSnaps(q.geogebra_code);
+        const lastIdx = snaps.length ? snaps.length - 1 : 0;
+        stepState[qid] = lastIdx;
+        playGgbStep(qid, lastIdx);
+      }
+    };
+    try {
+      new GGBApplet(params, true).inject(containerId);
+    } catch(e) {
+      container.innerHTML = `<div style="padding:24px;color:#ef4444;font-size:13px">⚠️ 几何画板加载失败：${e.message||e}</div>`;
+    }
+  });
+}
+
+function parseSnaps(code) {
+  const snaps=[];
+  let cur={step:0,description:'',commands:[]};
+  for(const line of (code||'').split('\n')){
+    const m=line.match(/^#\s*步骤\s*(\d+)[：:]?\s*(.*)/);
+    if(m){if(cur.commands.length)snaps.push(cur);cur={step:+m[1],description:m[2].trim(),commands:[]};}
+    else if(!line.trim().startsWith('#')&&line.trim()) cur.commands.push(line.trim());
+  }
+  if(cur.commands.length)snaps.push(cur);
+  return snaps;
+}
+
+function playGgbStep(qid, idx) {
+  const api = ggbApps[qid];
+  if(!api) return;
+  const q = findQ(qid);
+  if(!q) return;
+  const snaps = parseSnaps(q.geogebra_code);
+  if(!snaps.length){
+    // 无分步，直接播完所有命令
+    api.newConstruction();
+    const lines=(q.geogebra_code||'').split('\n').filter(l=>l.trim()&&!l.trim().startsWith('#'));
+    for(const cmd of lines){try{api.evalCommand(cmd);}catch(e){}}
+    return;
+  }
+  if(idx < 0) idx=0;
+  if(idx >= snaps.length) idx=snaps.length-1;
+  stepState[qid]=idx;
+  api.newConstruction();
+  for(let i=0;i<=idx;i++) for(const cmd of snaps[i].commands){try{api.evalCommand(cmd);}catch(e){}}
+  // 更新 UI
+  const label=document.getElementById(`step-label-${qid}`);
+  if(label) label.textContent=`步骤 ${idx+1}/${snaps.length}`;
+  document.querySelectorAll(`#qbody-s-${qid} .step-chip`).forEach((c,i)=>c.classList.toggle('active',i===idx));
+}
+
+function prevStep(qid){ playGgbStep(qid,(stepState[qid]||0)-1); }
+function nextStep(qid){ playGgbStep(qid,(stepState[qid]||0)+1); }
+function gotoStep(qid,idx){ playGgbStep(qid,idx); }
+
+// ════ AI 聊天 ════
+function toggleChat() {
+  document.getElementById('chat-panel').classList.toggle('open');
+}
+
+function askAI(qid) {
+  chatQId = qid;
+  const q = findQ(qid);
+  document.getElementById('chat-context-label').textContent = q ? `第${q.number||qid}题` : '智能问答';
+  document.getElementById('chat-panel').classList.add('open');
+  // 预填建议
+  document.getElementById('chat-input').value = q ? `第${q.number||qid}题，${(q.content||'').slice(0,40)}…` : '';
+  document.getElementById('chat-input').focus();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if(!msg && !_chatAttachments.length) return;
+  const attachments = _chatAttachments.slice();
+  input.value=''; input.style.height = 'auto';
+  const cnt = document.getElementById('chat-char-count'); if(cnt) cnt.textContent = '';
+  _chatAttachments = []; _renderChatAttachments();
+
+  appendChatBubble('user', msg, attachments);
+
+  // 确保有 session
+  if(!chatSessionId){
+    await _ensureChatSession();
+  }
+
+  // 创建 assistant bubble 流式显示
+  const msgsEl=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className='chat-bubble assistant'; div.textContent='…';
+  msgsEl.appendChild(div); msgsEl.scrollTop=msgsEl.scrollHeight;
+
+  // 把附件描述附加到消息文本（兼容现有不支持图片的后端）
+  const fullMsg = attachments.length
+    ? `${msg}\n\n[附件：${attachments.length} 张图片]`
+    : msg;
+  const params=new URLSearchParams({
+    session_id:chatSessionId||'',
+    question_id:chatQId||'',
+    message:fullMsg,
+    exam_id:chatExamId||''
+  });
+  try{
+    const resp=await fetch(`/api/academy/student/chat/stream?${params}`);
+    if(!resp.ok || !resp.body){ throw new Error('AI 服务暂不可用'); }
+    const reader=resp.body.getReader(); const decoder=new TextDecoder();
+    let buf=''; let full=''; let renderTimer=null;
+    const refresh = () => {
+      div.innerHTML = escHtml(_fixLatex(full)).replace(/\n/g,'<br>');
+      renderMathIn(div);
+      msgsEl.scrollTop=msgsEl.scrollHeight;
+    };
+    while(true){
+      const {done,value}=await reader.read(); if(done) break;
+      buf+=decoder.decode(value,{stream:true});
+      const parts=buf.split('\n\n'); buf=parts.pop();
+      for(const part of parts){
+        if(!part.startsWith('data:')) continue;
+        try{
+          const d=JSON.parse(part.slice(5).trim());
+          if(d.delta){
+            full+=d.delta;
+            clearTimeout(renderTimer);
+            renderTimer = setTimeout(refresh, 80);
+          }
+          if(d.error){
+            full = (full ? full + '\n\n' : '') + '⚠️ AI 服务出错：' + d.error;
+            clearTimeout(renderTimer); refresh();
+          }
+          if(d.done) { clearTimeout(renderTimer); refresh(); }
+        }catch(_){}
+      }
+    }
+    clearTimeout(renderTimer); refresh();
+  }catch(e){ div.textContent='错误：'+e.message; }
+}
+
+// ════ 聊天附件（图片）════
+let _chatAttachments = []; // {dataUrl, name}
+
+function _chatPickFiles(files){
+  const arr = Array.from(files || []);
+  let added = 0;
+  arr.forEach(f => {
+    if(!f.type.startsWith('image/')) return;
+    if(f.size > 5 * 1024 * 1024){ showToast(`${f.name} 超过 5MB`,'warn'); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      _chatAttachments.push({ dataUrl: e.target.result, name: f.name || 'image.png' });
+      _renderChatAttachments();
+    };
+    reader.readAsDataURL(f);
+    added++;
+  });
+  if(added) document.getElementById('chat-input').focus();
+}
+
+function _renderChatAttachments(){
+  const wrap = document.getElementById('chat-attachments');
+  if(!wrap) return;
+  if(!_chatAttachments.length){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  wrap.style.display='flex';
+  wrap.innerHTML = _chatAttachments.map((a,i)=>`
+    <div class="chat-attach-item" title="${escHtml(a.name)}">
+      <img src="${a.dataUrl}" alt="">
+      <button class="x" onclick="_chatRemoveAttach(${i})" title="移除">×</button>
+    </div>
+  `).join('');
+}
+
+function _chatRemoveAttach(i){
+  _chatAttachments.splice(i, 1);
+  _renderChatAttachments();
+}
+
+function appendChatBubble(role, text, attachments) {
+  const el=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className=`chat-bubble ${role}`;
+  let html = text ? escHtml(_fixLatex(text)).replace(/\n/g,'<br>') : '';
+  if(attachments && attachments.length){
+    html += attachments.map(a => `<img class="chat-img" src="${a.dataUrl}" alt="${escHtml(a.name||'')}" onclick="window.open(this.src,'_blank')">`).join('');
+  }
+  div.innerHTML = html || '(空)';
+  el.appendChild(div); el.scrollTop=el.scrollHeight;
+  renderMathIn(div);
+}
+
+function clearChat(){
+  if(!confirm('确定开始一个新对话？当前消息会被清空。')) return;
+  // 切空 session：下一次发送消息时后端会自动创建并写入历史
+  chatSessionId = null;
+  document.getElementById('chat-messages').innerHTML =
+    '<div class="chat-bubble assistant">已开启新对话，有什么数学问题可以问我～</div>';
+  // 提前预创建一个空会话，使其立即出现在历史列表中
+  _ensureChatSession().then(() => {
+    const panel = document.getElementById('chat-history-panel');
+    if (panel && panel.style.display === 'block') loadChatHistory();
+  });
+}
+
+// 创建会话（若 chatSessionId 为空）；返回 session_id
+async function _ensureChatSession(){
+  if(chatSessionId) return chatSessionId;
+  try{
+    const r = await fetch('/api/academy/student/chat',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        student_id: currentUser.id||'',
+        exam_id:    chatExamId||'',
+        title:      '新会话 ' + new Date().toLocaleString('zh-CN', {hour12:false})
+      })
+    });
+    if(r.ok){ const d = await r.json(); chatSessionId = d.session_id; }
+  }catch(_){}
+  return chatSessionId;
+}
+
+// ════ 历史会话面板 ════
+async function toggleChatHistory(){
+  const panel = document.getElementById('chat-history-panel');
+  if(!panel) return;
+  const opening = panel.style.display === 'none' || !panel.style.display;
+  panel.style.display = opening ? 'block' : 'none';
+  if(opening) await loadChatHistory();
+}
+
+async function loadChatHistory(){
+  const list = document.getElementById('chat-history-list');
+  if(!list) return;
+  list.innerHTML = '<div class="px-3 py-3 text-xs text-slate-400 text-center">加载中…</div>';
+  try{
+    const params = new URLSearchParams({
+      student_id: currentUser.id || '',
+      exam_id:    chatExamId || '',
+      limit: '30'
+    });
+    const r = await fetch('/api/academy/student/chat/sessions?' + params);
+    if(!r.ok) throw new Error('加载失败');
+    const sessions = await r.json();
+    if(!sessions.length){
+      list.innerHTML = '<div class="px-3 py-4 text-xs text-slate-400 text-center">暂无历史会话</div>';
+      return;
+    }
+    list.innerHTML = sessions.map(s => {
+      const t = s.created_at ? _formatRelTime(new Date(s.created_at).getTime()) : '';
+      const preview = escHtml(s.last_preview || '(空对话)');
+      const active = s.id === chatSessionId ? 'background:#eef2ff' : '';
+      return `
+        <div class="px-3 py-2 hover:bg-slate-50 cursor-pointer flex justify-between items-start gap-2" style="${active}" onclick="loadChatSession('${s.id}')">
+          <div class="flex-1 min-w-0">
+            <div class="text-sm text-slate-700 truncate">${preview}</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">${t} · ${s.message_count} 条</div>
+          </div>
+          <button onclick="event.stopPropagation();deleteChatSession('${s.id}')" class="text-slate-300 hover:text-red-500 text-xs px-1" title="删除">🗑</button>
+        </div>`;
+    }).join('');
+  }catch(e){
+    list.innerHTML = `<div class="px-3 py-3 text-xs text-red-500 text-center">${escHtml(e.message)}</div>`;
+  }
+}
+
+async function loadChatSession(sid){
+  if(!sid) return;
+  try{
+    const r = await fetch('/api/academy/student/chat/messages?session_id=' + encodeURIComponent(sid));
+    if(!r.ok) throw new Error('加载失败');
+    const msgs = await r.json();
+    chatSessionId = sid;
+    const msgsEl = document.getElementById('chat-messages');
+    msgsEl.innerHTML = '';
+    if(!msgs.length){
+      msgsEl.innerHTML = '<div class="chat-bubble assistant">这个会话还没有消息～</div>';
+    } else {
+      for(const m of msgs){
+        const div = document.createElement('div');
+        div.className = `chat-bubble ${m.role}`;
+        div.innerHTML = escHtml(_fixLatex(m.content || '')).replace(/\n/g,'<br>');
+        msgsEl.appendChild(div);
+        renderMathIn(div);
+      }
+    }
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    // 关闭历史面板
+    document.getElementById('chat-history-panel').style.display = 'none';
+    showToast('已加载历史会话');
+  }catch(e){
+    showToast('加载失败：'+e.message,'error');
+  }
+}
+
+async function deleteChatSession(sid){
+  if(!confirm('确认删除这个会话？')) return;
+  try{
+    await fetch('/api/academy/student/chat/'+encodeURIComponent(sid), {method:'DELETE'});
+    if(sid === chatSessionId){
+      chatSessionId = null;
+      document.getElementById('chat-messages').innerHTML =
+        '<div class="chat-bubble assistant">会话已删除，开启新对话吧～</div>';
+    }
+    await loadChatHistory();
+  }catch(e){ showToast('删除失败','error'); }
+}
+
+function _quickAsk(prompt){
+  const q = chatQId ? findQ(chatQId) : null;
+  // 仅把题号附在提示后，题目原文已通过 RAG 注入到后端 system prompt，避免 URL 过长被截断
+  const text = q ? `${prompt}（针对第 ${q.number||chatQId} 题）` : prompt;
+  document.getElementById('chat-input').value = text;
+  sendChat();
+}
+
+// ════ 匿名反馈 ════
+function openFeedback(qid, eid) {
+  feedbackQId=qid; feedbackExamId=eid;
+  document.getElementById('feedback-content').value='';
+  document.querySelector('input[name="ftype"][value="dont_understand"]').checked=true;
+  document.getElementById('feedback-modal').classList.add('open');
+}
+function closeFeedback(){ document.getElementById('feedback-modal').classList.remove('open'); }
+
+async function submitFeedback() {
+  const ftype=document.querySelector('input[name="ftype"]:checked')?.value||'suggestion';
+  const content=document.getElementById('feedback-content').value.trim();
+  await fetch('/api/academy/student/feedback',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      exam_id:feedbackExamId,question_id:feedbackQId,
+      student_id:currentUser.id||null,
+      anon_token:localStorage.getItem('anon_token'),
+      feedback_type:ftype, content
+    })
+  });
+  closeFeedback();
+  showToast('反馈已提交，感谢！');
+}
+
+// ════ 工具 ════
+function findQ(qid){
+  return (currentExam?.questions||[]).find(q=>String(q.id||'')==qid||String(q.number||'')==qid);
+}
+
+// ════════════════════════════════════
+//  ✏️ 手写笔记：整页可写覆盖层（每题独立保存到 localStorage）
+// ════════════════════════════════════
+const _noteState = {};   // { qid: {tool, color, size, strokes:[{tool,color,size,points:[{x,y}]}], ctx, canvas, drawing, w, h, dpr} }
+let _noteCurQid = null;  // 当前活动笔记题目（供浮动工具栏使用）
+
+function _noteInit(qid){
+  if(!qid) return null;
+  const canvas = document.getElementById(`note-overlay-${qid}`);
+  if(!canvas) return null;
+  if(_noteState[qid]){
+    // 已存在：仅可能需要重新尺寸（内容变化）
+    _noteResize(qid);
+    return _noteState[qid];
+  }
+  const wrap = canvas.parentElement;  // .q-detail-wrap
+  const dpr = window.devicePixelRatio || 1;
+  const w = wrap.clientWidth;
+  const h = Math.max(wrap.scrollHeight, wrap.clientHeight);
+  canvas.width  = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const st = { tool:'pen', color:'#0f172a', size:3, strokes:[], ctx, canvas, drawing:false, w, h, dpr, wrap };
+  _noteState[qid] = st;
+  // 恢复本地存档
+  try{
+    const saved = localStorage.getItem('note-strokes-'+qid);
+    if(saved){ st.strokes = JSON.parse(saved); _noteRedraw(qid); }
+  }catch(_){}
+  // 指针事件：统一鼠标 / 触屏 / Apple Pencil
+  const getPos = (ev) => {
+    const r = canvas.getBoundingClientRect();
+    return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+  };
+  const start = (ev) => {
+    if(!wrap.classList.contains('note-on')) return;
+    // 只响应主指针（鼠标左键/手指/笔）
+    if(ev.button !== undefined && ev.button !== 0) return;
+    ev.preventDefault();
+    try { canvas.setPointerCapture(ev.pointerId); } catch(_){}
+    st.drawing = true;
+    const p = getPos(ev);
+    st.strokes.push({ tool: st.tool, color: st.color, size: st.size, points:[p] });
+  };
+  const move = (ev) => {
+    if(!st.drawing) return;
+    ev.preventDefault();
+    const p = getPos(ev);
+    const stroke = st.strokes[st.strokes.length-1];
+    stroke.points.push(p);
+    _noteDrawSegment(qid, stroke, stroke.points.length-2);
+  };
+  const end = (ev) => {
+    if(!st.drawing) return;
+    st.drawing = false;
+    try { ev && ev.pointerId !== undefined && canvas.releasePointerCapture(ev.pointerId); } catch(_){}
+    _notePersist(qid);
+  };
+  // Pointer Events 覆盖鼠标/触屏/笔；其他路径作为充底
+  if (window.PointerEvent) {
+    canvas.addEventListener('pointerdown', start);
+    canvas.addEventListener('pointermove', move);
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointercancel', end);
+  } else {
+    const tStart = (ev)=>{ const t=ev.touches[0]; start({clientX:t.clientX, clientY:t.clientY, preventDefault:()=>ev.preventDefault(), button:0}); };
+    const tMove  = (ev)=>{ const t=ev.touches[0]; move({clientX:t.clientX, clientY:t.clientY, preventDefault:()=>ev.preventDefault()}); };
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+    canvas.addEventListener('touchstart', tStart, {passive:false});
+    canvas.addEventListener('touchmove', tMove, {passive:false});
+    canvas.addEventListener('touchend', end);
+  }
+  return st;
+}
+
+// 重新调整画布尺寸至当前 wrap 大小（保留笔迹，重新绘制）
+function _noteResize(qid){
+  const st = _noteState[qid]; if(!st) return;
+  const wrap = st.wrap;
+  const w = wrap.clientWidth;
+  const h = Math.max(wrap.scrollHeight, wrap.clientHeight);
+  if(w === st.w && h === st.h) return;
+  const dpr = st.dpr;
+  st.canvas.width  = Math.floor(w * dpr);
+  st.canvas.height = Math.floor(h * dpr);
+  st.canvas.style.width  = w + 'px';
+  st.canvas.style.height = h + 'px';
+  st.ctx = st.canvas.getContext('2d');
+  st.ctx.scale(dpr, dpr);
+  st.ctx.lineCap = 'round';
+  st.ctx.lineJoin = 'round';
+  st.w = w; st.h = h;
+  _noteRedraw(qid);
+}
+
+function _noteDrawSegment(qid, stroke, fromIdx){
+  const st = _noteState[qid]; if(!st) return;
+  const c = st.ctx;
+  const a = stroke.points[fromIdx], b = stroke.points[fromIdx+1];
+  if(!a || !b) return;
+  c.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
+  c.strokeStyle = stroke.color;
+  c.lineWidth = stroke.tool === 'eraser' ? stroke.size * 4 : stroke.size;
+  c.beginPath();
+  c.moveTo(a.x, a.y);
+  c.lineTo(b.x, b.y);
+  c.stroke();
+}
+
+function _noteRedraw(qid){
+  const st = _noteState[qid]; if(!st) return;
+  st.ctx.clearRect(0, 0, st.w, st.h);
+  for(const s of st.strokes){
+    for(let i=0; i<s.points.length-1; i++) _noteDrawSegment(qid, s, i);
+  }
+}
+
+function _notePersist(qid){
+  try{ localStorage.setItem('note-strokes-'+qid, JSON.stringify(_noteState[qid].strokes)); }catch(_){}
+}
+
+// 切换笔记模式（开启时整页变成可绘制画布 + 显示浮动工具栏）
+function toggleNote(qid){
+  const wrap = document.querySelector('.q-detail-wrap');
+  if(!wrap) return;
+  const btn = document.getElementById(`note-toggle-${qid}`);
+  const fb  = document.getElementById('note-floatbar');
+  const hint = document.getElementById('note-mode-hint');
+  const opening = !wrap.classList.contains('note-on');
+  wrap.classList.toggle('note-on', opening);
+  if(fb) fb.classList.toggle('open', opening);
+  if(hint) hint.style.display = opening ? 'block' : 'none';
+  if(btn) btn.textContent = opening ? '✕ 退出笔记模式' : '✏️ 在本页做笔记';
+  _noteCurQid = opening ? qid : null;
+  if(opening){
+    setTimeout(() => { _noteInit(qid); _noteResize(qid); }, 30);
+  }
+}
+
+function noteSetTool(qid, tool, btnEl){
+  const st = _noteInit(qid); if(!st) return;
+  st.tool = tool;
+  document.querySelectorAll('#note-floatbar .note-tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+  if(btnEl) btnEl.classList.add('active');
+}
+
+function noteSetColor(qid, color, el){
+  const st = _noteInit(qid); if(!st) return;
+  st.color = color; st.tool = 'pen';
+  document.querySelectorAll('#note-floatbar .note-color').forEach(b => b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.querySelectorAll('#note-floatbar .note-tool-btn[data-tool]').forEach(b => b.classList.remove('active'));
+  const penBtn = document.querySelector('#note-floatbar .note-tool-btn[data-tool="pen"]');
+  if(penBtn) penBtn.classList.add('active');
+}
+
+function noteSetSize(qid, v){
+  const st = _noteInit(qid); if(!st) return;
+  st.size = +v || 3;
+}
+
+function noteUndo(qid){
+  const st = _noteState[qid]; if(!st) return;
+  st.strokes.pop();
+  _noteRedraw(qid);
+  _notePersist(qid);
+}
+
+function noteClear(qid){
+  if(!confirm('确认清空本题手写笔记？')) return;
+  const st = _noteState[qid]; if(!st) return;
+  st.strokes = [];
+  _noteRedraw(qid);
+  _notePersist(qid);
+}
+
+function noteDownload(qid){
+  const st = _noteInit(qid); if(!st) return;
+  const out = document.createElement('canvas');
+  out.width = st.canvas.width; out.height = st.canvas.height;
+  const oc = out.getContext('2d');
+  oc.fillStyle = '#fff'; oc.fillRect(0,0,out.width,out.height);
+  oc.drawImage(st.canvas, 0, 0);
+  const a = document.createElement('a');
+  a.download = `note-Q${qid}-${Date.now()}.png`;
+  a.href = out.toDataURL('image/png');
+  a.click();
+  showToast('已下载笔记图片');
+}
+
+// 窗口大小变化时重排当前题目笔记画布
+window.addEventListener('resize', () => { if(_noteCurQid) _noteResize(_noteCurQid); });
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let _toastTimer=null;
+function showToast(msg,type='success'){
+  let el=document.getElementById('toast');
+  if(!el){el=document.createElement('div');el.id='toast';
+    el.style.cssText='position:fixed;bottom:24px;right:360px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;transition:opacity .3s;box-shadow:0 4px 16px rgba(0,0,0,.15)';
+    document.body.appendChild(el);}
+  const colors={success:'background:#10b981;color:#fff',warn:'background:#f59e0b;color:#fff',error:'background:#ef4444;color:#fff'};
+  el.style.cssText+=';'+(colors[type]||colors.success);
+  el.textContent=msg; el.style.opacity='1';
+  clearTimeout(_toastTimer); _toastTimer=setTimeout(()=>el.style.opacity='0',2800);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+fastapi
+uvicorn
+python-multipart
+httpx
+
+# 智绘书院 — 试卷解析
+pymupdf        # PDF 文字提取 + 渲染
+python-docx    # Word 文档解析
+
+# 智绘书院 — 数据库（新功能）
+sqlalchemy[asyncio]>=2.0
+aiosqlite       # SQLite 异步驱动（开发/默认）
+asyncpg         # PostgreSQL 异步驱动（生产）
+
+# 智绘书院 — LangGraph 多 Agent
+langgraph>=0.2
+langchain-openai>=0.2
+langchain-core>=0.3
+langsmith>=0.1
+
+# 智绘书院 — 文件存储（腾讯 COS / AWS S3）
+boto3
+

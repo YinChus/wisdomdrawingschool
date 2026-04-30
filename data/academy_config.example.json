@@ -1,0 +1,6 @@
+{
+  "api_key": "sk-YOUR_API_KEY_HERE",
+  "base_url": "https://api.chatanywhere.tech/v1",
+  "text_model": "gpt-4o",
+  "vision_model": "gpt-4o"
+}

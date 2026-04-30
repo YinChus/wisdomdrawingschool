@@ -1,0 +1,3660 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智绘书院 — 教师端</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{primary:'#6366f1',accent:'#10b981'}}}}
+</script>
+<!-- KaTeX 数学公式渲染 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="window.__katexReady=true;document.dispatchEvent(new Event('katex-ready'))"></script>
+<style>
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f1f5f9;font-size:15px}
+.sidebar{width:260px;min-width:260px;background:#1e1b4b;color:#c7d2fe}
+.sidebar h2{color:#a5b4fc;font-size:12px;letter-spacing:.1em;padding:12px 16px 4px;text-transform:uppercase}
+.exam-item{padding:8px 14px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:14px;transition:.15s}
+.exam-item:hover,.exam-item.active{background:#312e81;color:#e0e7ff}
+.card-menu-item{display:block;width:100%;text-align:left;padding:8px 14px;background:transparent;border:none;cursor:pointer;font-size:13px;color:#334155;transition:background .12s}
+.card-menu-item:hover{background:#f1f5f9}
+.badge{font-size:10px;padding:2px 6px;border-radius:9999px;font-weight:600}
+.tab-btn{padding:7px 18px;border-radius:6px;font-size:14px;cursor:pointer;transition:.15s;color:#64748b}
+.tab-btn.active{background:#6366f1;color:#fff}
+.q-card{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:12px;overflow:hidden}
+.q-header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f1f5f9;cursor:pointer}
+.q-body{padding:16px;display:none}
+.q-body.open{display:block}
+.cat-badge{font-size:12px;padding:3px 10px;border-radius:9999px;font-weight:600}
+.edit-area{width:100%;min-height:80px;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:15px;line-height:1.65;resize:vertical;font-family:inherit;color:#1e293b}
+.edit-area:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+.btn{padding:7px 16px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:500;transition:.15s;border:none}
+.btn-primary{background:#6366f1;color:#fff}.btn-primary:hover{background:#4f46e5}
+.btn-sm{padding:5px 12px;font-size:13px}
+.btn-ghost{background:#fff;border:1px solid #e2e8f0;color:#475569}.btn-ghost:hover{background:#f8fafc;border-color:#c7d2fe}
+.btn-danger{background:#ef4444;color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-green{background:#10b981;color:#fff}.btn-green:hover{background:#059669}
+.progress-bar{height:6px;background:#e2e8f0;border-radius:9999px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#10b981);transition:width .4s}
+.ggb-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);align-items:center;justify-content:center}
+.ggb-modal.open{display:flex}
+.ggb-box{background:#fff;border-radius:14px;width:min(900px,95vw);max-height:90vh;overflow:auto;padding:20px}
+#ggb-container{width:100%;height:500px;border-radius:8px;overflow:hidden;background:#f8fafc}
+.step-chip{display:inline-block;padding:3px 10px;border-radius:9999px;font-size:11px;background:#e0e7ff;color:#4f46e5;margin:2px;cursor:pointer}
+.step-chip.active{background:#6366f1;color:#fff}
+.drop-zone{border:2px dashed #c7d2fe;border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:.2s}
+.drop-zone:hover,.drop-zone.drag{border-color:#6366f1;background:#ede9fe}
+.resource-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:#f1f5f9;border-radius:6px;font-size:12px;margin:3px}
+.feedback-row{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9;align-items:start;font-size:13px}
+.feedback-type-tag{padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600}
+.agent-log{background:#0f172a;color:#86efac;font-size:12px;padding:12px;border-radius:8px;height:160px;overflow-y:auto;font-family:monospace}
+/* 几何画板快照卡 */
+.snap-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px;margin-bottom:10px;cursor:grab;transition:.15s}
+.snap-card:hover{border-color:#818cf8;box-shadow:0 2px 12px rgba(99,102,241,.15)}
+.snap-card[draggable]:active{cursor:grabbing;opacity:.8}
+.snap-badge{display:inline-block;background:#e0e7ff;color:#4f46e5;font-size:11px;padding:2px 8px;border-radius:9999px;margin-bottom:6px}
+.snap-img{width:100%;border-radius:6px;border:1px solid #e2e8f0;margin-bottom:8px;display:block}
+.q-card.drag-over{outline:2.5px dashed #6366f1 !important;background:#ede9fe !important}
+
+/* ── 题目列表卡（紧凑版，可点击进入详情）── */
+.q-list-item{background:#fff;border-radius:10px;border:1px solid #eef0f5;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s}
+.q-list-item:hover{border-color:#a5b4fc;box-shadow:0 4px 16px rgba(99,102,241,.12);transform:translateY(-1px)}
+.q-list-item .q-num{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:#6366f1;background:#eef2ff;border-radius:8px;padding:6px 12px;min-width:48px;text-align:center}
+.q-list-item .q-preview{flex:1;min-width:0;color:#334155;font-size:15px;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.q-list-item .q-preview .katex{font-size:1em}
+.q-list-item .q-tail{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.q-mini-tag{font-size:12px;padding:3px 8px;border-radius:6px;background:#f1f5f9;color:#64748b}
+.q-mini-tag.ok{background:#dcfce7;color:#166534}
+.q-mini-tag.pending{background:#ffedd5;color:#c2410c;border:1px solid #fed7aa;font-weight:600}
+@keyframes pulse-orange{0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,.55)}50%{box-shadow:0 0 0 6px rgba(245,158,11,0)}}
+
+/* ── 题目详情页 ── */
+.q-detail-wrap{max-width:none;margin:0;padding:0 8px}
+.q-detail-toolbar{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #eef0f5;border-radius:12px;padding:12px 18px;margin-bottom:16px;position:sticky;top:0;z-index:5;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+.q-detail-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:start}
+@media(max-width:1100px){.q-detail-grid{grid-template-columns:1fr}}
+.q-panel{background:#fff;border:1px solid #eef0f5;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+.q-panel-head{padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:15px;color:#1e293b;font-weight:600;background:linear-gradient(180deg,#fafbff,#fff)}
+.q-panel-body{padding:18px}
+.q-render-box{background:#fafbfd;border:1px solid #eef2f7;border-radius:10px;padding:18px 20px;font-size:16px;line-height:1.9;color:#0f172a;min-height:60px}
+.q-render-box .katex{font-size:1.08em}
+.q-render-box.empty{color:#94a3b8;font-style:italic;text-align:center;padding:24px}
+.q-edit-section{margin-bottom:16px}
+.q-edit-section label{font-size:13px;font-weight:600;color:#475569;margin-bottom:8px;display:block;letter-spacing:.02em}
+.q-edit-section .edit-area{font-size:15px;line-height:1.7;border-radius:8px}
+.q-detail-toolbar .nav-btn{background:#f1f5f9;border:none;color:#475569;padding:7px 14px;border-radius:8px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:.15s;font-weight:500}
+.q-detail-toolbar .nav-btn:hover:not(:disabled){background:#e0e7ff;color:#4f46e5}
+.q-detail-toolbar .nav-btn:disabled{opacity:.4;cursor:not-allowed}
+.q-detail-toolbar .crumb{font-size:15px;color:#1e293b;font-weight:600}
+.q-detail-toolbar .crumb .num{color:#6366f1;font-family:'JetBrains Mono',monospace;margin-right:6px;font-size:16px}
+
+/* ── 富文本预览侧（实时渲染）── */
+.live-preview{background:#fff;border:1px solid #e0e7ff;border-radius:8px;padding:14px 16px;margin-top:8px;font-size:15px;line-height:1.85;color:#0f172a;min-height:60px;max-height:240px;overflow:auto}
+.live-preview.empty{color:#cbd5e1;font-style:italic;font-size:13px;text-align:center;padding:18px}
+.live-preview .katex{font-size:1.05em}
+.toolbar-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;padding:6px 8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
+.toolbar-row button{background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer;color:#475569}
+.toolbar-row button:hover{background:#eef2ff;color:#4f46e5;border-color:#c7d2fe}
+.toolbar-row .sep{width:1px;background:#e2e8f0;margin:0 2px}
+
+/* ── 类别可编辑下拉 ── */
+.cat-input-wrap{display:flex;gap:6px}
+.cat-input-wrap select,.cat-input-wrap input{flex:1}
+
+/* ── 上传区（改善观感）── */
+.upload-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:2px dashed #cbd5e1;border-radius:12px;padding:24px;cursor:pointer;transition:.15s;background:linear-gradient(180deg,#fafbff,#f8fafc)}
+.upload-card:hover{border-color:#6366f1;background:linear-gradient(180deg,#eef2ff,#e0e7ff)}
+.upload-card .icon{font-size:36px;opacity:.7}
+.res-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.res-tile{display:flex;flex-direction:column;gap:8px;padding:12px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;transition:.15s;position:relative}
+.res-tile:hover{border-color:#a5b4fc;box-shadow:0 2px 10px rgba(99,102,241,.1)}
+.res-tile .x{position:absolute;top:6px;right:8px;color:#cbd5e1;cursor:pointer;font-size:18px;line-height:1;background:rgba(255,255,255,.9);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;z-index:2}
+.res-tile .x:hover{color:#fff;background:#ef4444}
+.res-tile img,.res-tile video{width:100%;height:120px;object-fit:cover;border-radius:6px;background:#f1f5f9}
+.res-tile audio{width:100%}
+.res-tile .name{font-size:13px;color:#334155;line-height:1.4;word-break:break-all}
+.res-tile .meta{font-size:11px;color:#94a3b8}
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- ════ 侧边栏 ════ -->
+<aside class="sidebar flex flex-col h-screen overflow-hidden">
+  <div class="flex items-center gap-2 px-4 py-4 border-b border-indigo-900">
+    <span class="text-2xl">🏛️</span>
+    <div>
+      <div class="font-bold text-white text-sm">智绘书院</div>
+      <div class="text-xs text-indigo-400" id="user-info">教师端</div>
+    </div>
+  </div>
+
+  <div class="flex-1 overflow-y-auto p-2">
+    <!-- 快捷导航 -->
+    <div class="px-2 mb-3 space-y-1">
+      <button onclick="showExamHome()" id="nav-home"
+        class="w-full text-left px-3 py-2 rounded-lg text-sm text-indigo-300 hover:bg-indigo-900 hover:text-white flex items-center gap-2 transition-colors">
+        <span>🏠</span><span>试卷首页</span>
+      </button>
+      <button onclick="showAllFeedbackView()" id="nav-feedback"
+        class="w-full text-left px-3 py-2 rounded-lg text-sm text-indigo-300 hover:bg-indigo-900 hover:text-white flex items-center gap-2 transition-colors">
+        <span>💬</span><span>学生反馈总览</span>
+      </button>
+      <button onclick="showDrawBoard()" id="nav-geoboard"
+        class="w-full text-left px-3 py-2 rounded-lg text-sm text-indigo-300 hover:bg-indigo-900 hover:text-white flex items-center gap-2 transition-colors">
+        <span>🎨</span><span>试卷绘图</span>
+      </button>
+      <button onclick="window.open('geometry-board.html','_blank')" id="nav-geom"
+        class="w-full text-left px-3 py-2 rounded-lg text-sm text-indigo-300 hover:bg-indigo-900 hover:text-white flex items-center gap-2 transition-colors">
+        <span>📐</span><span>几何画板</span>
+      </button>
+    </div>
+
+    <h2>试卷列表</h2>
+    <div id="exam-list" class="space-y-1">
+      <div class="text-indigo-400 text-xs px-2 py-2">加载中…</div>
+    </div>
+  </div>
+
+  <div class="p-3 border-t border-indigo-900 space-y-2">
+    <button onclick="openUploadModal()" class="btn btn-primary w-full text-sm">+ 上传试卷</button>
+    <button onclick="location.href='/academy-admin.html'" class="btn btn-ghost w-full text-sm text-indigo-300 border-indigo-700">管理后台</button>
+    <button onclick="logout()" class="btn btn-ghost w-full text-sm text-indigo-400 border-indigo-800">退出登录</button>
+  </div>
+</aside>
+
+<!-- ════ 主内容区 ════ -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden">
+  <!-- 顶部栏 -->
+  <header class="bg-white border-b px-6 py-3 flex items-center justify-between">
+    <div id="exam-title" class="font-semibold text-slate-700 text-lg">请选择试卷</div>
+    <div class="flex gap-2" id="header-actions" style="display:none"></div>
+    <div class="flex gap-2" id="header-btns">
+      <button onclick="runAgents()" id="btn-agents" class="btn btn-primary btn-sm hidden">🤖 全自动分析</button>
+      <button onclick="openPublishModal()" id="btn-publish" class="btn btn-green btn-sm hidden">📤 发布</button>
+      <button onclick="unpublishExam()" id="btn-unpublish" class="btn btn-ghost btn-sm hidden">↩ 撤销发布</button>
+    </div>
+  </header>
+
+  <!-- Agent 进度条 -->
+  <div id="agent-panel" class="hidden bg-indigo-950 px-6 py-3">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-indigo-300 text-xs font-mono" id="agent-stage">准备中…</span>
+      <span class="text-indigo-400 text-xs" id="agent-pct">0%</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="agent-bar" style="width:0%"></div></div>
+    <div class="agent-log mt-2" id="agent-log"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="bg-white border-b px-6 py-2 flex gap-2" id="tabs-bar" style="display:none">
+    <button class="tab-btn active" data-tab="questions" onclick="switchTab('questions',this)">📋 题目</button>
+    <button class="tab-btn" data-tab="feedback" onclick="switchTab('feedback',this)">💬 反馈</button>
+    <button class="tab-btn" data-tab="publish" onclick="switchTab('publish',this)">📤 发布配置</button>
+  </div>
+
+  <!-- 内容区 -->
+  <div class="flex-1 overflow-y-auto" style="padding:20px 40px" id="content-area">
+    <div class="flex flex-col items-center justify-center h-full text-slate-400">
+      <div class="text-5xl mb-4">📚</div>
+      <div class="text-lg">加载中…</div>
+    </div>
+  </div>
+</main>
+
+<!-- ════ 上传试卷 Modal ════ -->
+<div id="upload-modal" class="ggb-modal">
+  <div class="ggb-box" style="max-width:560px">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold text-lg">上传试卷</h3>
+      <button onclick="closeModal('upload-modal')" class="text-slate-400 text-xl leading-none">×</button>
+    </div>
+
+    <!-- 双拖拽区 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <!-- 试卷文件 -->
+      <div>
+        <div class="text-xs font-medium text-slate-600 mb-1">试卷文件 <span class="text-red-400">*</span></div>
+        <div class="drop-zone" id="upload-drop-exam"
+             onclick="document.getElementById('upload-file-exam').click()"
+             style="min-height:110px;padding:16px 10px">
+          <div id="upload-exam-icon" class="text-2xl mb-1">📄</div>
+          <div class="text-xs text-slate-500">点击或拖入</div>
+          <div class="text-xs text-slate-400 mt-0.5" id="upload-exam-name" style="word-break:break-all">PDF / Word / 图片</div>
+        </div>
+        <input type="file" id="upload-file-exam"
+               accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.webp" class="hidden"
+               onchange="onExamFileSelected(this)">
+      </div>
+      <!-- 答案解析文件（可选） -->
+      <div>
+        <div class="text-xs font-medium text-slate-600 mb-1">答案解析文件 <span class="text-slate-400">（可选）</span></div>
+        <div class="drop-zone" id="upload-drop-answer"
+             onclick="document.getElementById('upload-file-answer').click()"
+             style="min-height:110px;padding:16px 10px">
+          <div id="upload-answer-icon" class="text-2xl mb-1">📋</div>
+          <div class="text-xs text-slate-500">点击或拖入</div>
+          <div class="text-xs text-slate-400 mt-0.5" id="upload-answer-name" style="word-break:break-all">AI 自动填充答案</div>
+        </div>
+        <input type="file" id="upload-file-answer"
+               accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.webp,.txt" class="hidden"
+               onchange="onAnswerFileSelected(this)">
+      </div>
+    </div>
+
+    <!-- 标题 -->
+    <div class="mt-3">
+      <input type="text" id="upload-title" class="edit-area" style="height:36px;resize:none"
+             placeholder="试卷标题（可选，AI 自动识别）">
+    </div>
+
+    <!-- 进度 -->
+    <div id="upload-progress" class="hidden mt-3">
+      <div class="progress-bar"><div class="progress-fill" id="upload-bar" style="width:0%"></div></div>
+      <div class="text-xs text-slate-500 mt-1" id="upload-status">解析中…</div>
+    </div>
+
+    <div class="flex justify-end gap-2 mt-4">
+      <button onclick="closeModal('upload-modal')" class="btn btn-ghost">取消</button>
+      <button onclick="submitUpload()" class="btn btn-primary" id="upload-submit">开始解析</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ 发布 Modal ════ -->
+<div id="publish-modal" class="ggb-modal">
+  <div class="ggb-box" style="max-width:480px">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="font-semibold text-lg">发布试卷</h3>
+      <button onclick="closeModal('publish-modal')" class="text-slate-400 text-xl">×</button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-sm text-slate-600 block mb-1">答案/解析文件（可选）</label>
+        <div class="drop-zone" onclick="document.getElementById('answer-file-input').click()">
+          <span class="text-sm text-slate-500" id="answer-filename">点击上传答案文件</span>
+        </div>
+        <input type="file" id="answer-file-input" class="hidden" onchange="document.getElementById('answer-filename').textContent=this.files[0]?.name||'点击上传答案文件'">
+      </div>
+      <div>
+        <label class="text-sm text-slate-600 block mb-1">或直接输入答案（纯文本）</label>
+        <textarea id="answer-text" class="edit-area" placeholder="A B C D …"></textarea>
+      </div>
+      <label class="flex items-center gap-2 text-sm text-slate-700 bg-amber-50 border border-amber-200 rounded p-2">
+        <input type="checkbox" id="answer-allow-view" class="w-4 h-4">
+        <span>发布后允许学生查看答案 / 解析（可后续随时切换）</span>
+      </label>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button onclick="closeModal('publish-modal')" class="btn btn-ghost">取消</button>
+      <button onclick="submitPublish()" class="btn btn-green">发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ GeoGebra 编辑器 Modal ════ -->
+<div id="ggb-modal" class="ggb-modal">
+  <div class="ggb-box" style="width:min(920px,96vw)">
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="font-semibold text-lg">GeoGebra 可视化编辑器</h3>
+      <button onclick="closeGgbModal()" class="text-slate-400 text-xl">×</button>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <div class="text-xs text-slate-500 mb-1">GeoGebra 命令（每行一条）</div>
+        <textarea id="ggb-code-input" class="edit-area" style="height:300px;font-family:monospace;font-size:12px" placeholder="# 步骤1: 绘制坐标系&#10;A=(0,0)&#10;f(x)=x^2"></textarea>
+        <div class="flex gap-2 mt-2">
+          <button onclick="aiGenerateGgb()" class="btn btn-primary btn-sm">🤖 AI生成</button>
+          <button onclick="applyGgbCode()" class="btn btn-ghost btn-sm">▶ 预览</button>
+          <button onclick="saveViz()" class="btn btn-green btn-sm">💾 保存</button>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs text-slate-500 mb-1">实时预览</div>
+        <div id="ggb-container"></div>
+        <div class="mt-2">
+          <div class="text-xs text-slate-500 mb-1">步骤快照</div>
+          <div id="step-chips" class="flex flex-wrap gap-1"></div>
+        </div>
+      </div>
+    </div>
+    <div id="ggb-ai-status" class="text-xs text-indigo-500 mt-2 hidden">AI 正在生成代码…</div>
+  </div>
+</div>
+
+<!-- ════ 题目字段编辑 Modal ════ -->
+<div id="q-edit-modal" class="ggb-modal">
+  <div class="ggb-box" style="width:min(820px,96vw);max-height:90vh;display:flex;flex-direction:column">
+    <div class="flex justify-between items-center mb-3">
+      <h3 class="font-semibold text-lg" id="q-edit-title">编辑</h3>
+      <button onclick="closeQEditModal()" class="text-slate-400 text-2xl leading-none">×</button>
+    </div>
+    <div id="q-edit-body" style="flex:1;overflow-y:auto;padding-right:4px"></div>
+    <div class="flex justify-end gap-2 mt-3 pt-3" style="border-top:1px solid #e2e8f0">
+      <button onclick="closeQEditModal()" class="btn btn-ghost">取消</button>
+      <button onclick="saveQEditModal()" class="btn btn-primary">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ 几何画板 Modal（2D + 3D + TikZ） ════ -->
+<div id="q-geo-modal" class="ggb-modal">
+  <div class="ggb-box" style="width:96vw;height:94vh;max-width:none;display:flex;flex-direction:column;padding:14px 18px">
+    <div class="flex justify-between items-center mb-2">
+      <div class="flex items-center gap-3 flex-wrap">
+        <h3 class="font-semibold text-lg" id="q-geo-title">几何画板</h3>
+        <button id="q-geo-tab-2d"   onclick="switchQGeoMode('2d')"   class="btn btn-sm btn-primary">📐 2D · GeoGebra</button>
+        <button id="q-geo-tab-3d"   onclick="switchQGeoMode('3d')"   class="btn btn-sm btn-ghost">🧊 3D · GeoGebra</button>
+        <button id="q-geo-tab-tikz" onclick="switchQGeoMode('tikz')" class="btn btn-sm btn-ghost">📝 TikZ · LaTeX</button>
+        <span id="q-geo-q-hint" class="text-xs text-slate-400 ml-2"></span>
+      </div>
+      <button onclick="closeQGeoModal()" class="text-slate-400 text-2xl leading-none">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 420px;gap:14px;flex:1;min-height:0">
+      <div style="display:flex;flex-direction:column;min-height:0">
+        <div id="q-geo-board" style="flex:1;min-height:0;border:1px solid #e2e8f0;border-radius:10px;background:#fafbfd;overflow:hidden;position:relative"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;min-height:0;overflow-y:auto">
+        <div class="rounded-xl border" style="border-color:#c7d2fe;background:linear-gradient(135deg,#f5f3ff 0%,#eef2ff 100%);padding:12px;box-shadow:0 1px 3px rgba(99,102,241,.08)">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-indigo-700">🤖 AI 一键生成（结合本题）</span>
+            <label class="text-xs text-slate-500 flex items-center gap-1">
+              <input type="checkbox" id="q-geo-use-question" checked> 使用题目内容
+            </label>
+          </div>
+          <button onclick="aiGenerateQGeo()" id="q-geo-ai-btn"
+            style="width:100%;padding:10px 14px;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 6px rgba(99,102,241,.25);display:flex;align-items:center;justify-content:center;gap:6px">
+            ✨ 一键生成并应用
+          </button>
+          <button onclick="aiGenerateQGeoStrict()" id="q-geo-ai-strict-btn"
+            style="width:100%;padding:8px 14px;margin-top:6px;font-size:13px;font-weight:600;color:#fff;background:linear-gradient(135deg,#0d9488 0%,#0891b2 100%);border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 6px rgba(13,148,136,.25);display:flex;align-items:center;justify-content:center;gap:6px"
+            title="多 Agent 流程：Planner→Coder→执行→Healer 自动修复，更稳但更慢（10-25s）">
+            🛡️ 严谨生成（多 Agent · 自动修复）
+          </button>
+          <details class="mt-2" style="font-size:12px">
+            <summary style="cursor:pointer;color:#6366f1;font-size:12px">💬 自定义补充指令（可选）</summary>
+            <textarea id="q-geo-ai-prompt" class="edit-area mt-1" style="height:60px;font-size:13px"
+              placeholder="留空则直接根据题目内容自动作图；填写则在题目基础上追加你的要求，例：标出关键交点 / 用红色画弦"></textarea>
+          </details>
+          <div id="q-geo-ai-status" class="text-xs mt-2" style="display:none;color:#6366f1"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;flex:1;min-height:200px">
+          <div class="flex items-center justify-between mb-1 flex-wrap gap-1">
+            <span class="text-xs text-slate-500" id="q-geo-code-label">绘图命令（每行一条）· <span style="color:#6366f1">这里的代码就是入库 / 学生端将看到的</span></span>
+            <div class="flex gap-1 flex-wrap">
+              <button onclick="applyQGeoCode()" class="btn btn-ghost btn-sm" style="font-size:11px" title="把代码框内容渲染到左侧画板预览">▶ 应用</button>
+              <button onclick="resetQGeoBoard()" class="btn btn-ghost btn-sm" style="font-size:11px;color:#0ea5e9" title="画板卡住或弹错时点这里重建画板">🔄 重置画板</button>
+              <button onclick="clearQGeoBoard()" class="btn btn-ghost btn-sm" style="font-size:11px;color:#ef4444">🗑 清空</button>
+            </div>
+          </div>
+          <textarea id="q-geo-code" class="edit-area" style="flex:1;min-height:160px;font-family:monospace;font-size:12px"
+            placeholder="A=(0,0)&#10;B=(4,0)&#10;C=(2,3)&#10;Polygon(A,B,C)"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-between items-center mt-3 pt-3 flex-wrap gap-2" style="border-top:1px solid #e2e8f0">
+      <span id="q-geo-saved-hint" class="text-xs text-slate-400"></span>
+      <div class="flex gap-2 flex-wrap">
+        <button onclick="closeQGeoModal()" class="btn btn-ghost">关闭</button>
+        <button onclick="saveQGeoToDataset()" class="btn btn-ghost" style="color:#0891b2;border:1px solid #67e8f9" title="把当前题目+几何代码作为新条目入库到标注系统的 triplets 数据集">📦 入库标注系统</button>
+        <button onclick="saveQGeoToQuestion()" class="btn btn-green">💾 保存到本题</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ 🏭 出题工厂 Modal（LangGraph Multi-Agent） ════ -->
+<div id="factory-modal" class="ggb-modal">
+  <div class="ggb-box" style="width:96vw;height:94vh;max-width:none;display:flex;flex-direction:column;padding:14px 18px">
+    <div class="flex justify-between items-center mb-2">
+      <div class="flex items-center gap-3">
+        <h3 class="font-semibold text-lg">🏭 出题工厂 <span class="text-xs text-slate-400 font-normal">基于 LangGraph 的多 Agent 自动变式题生成</span></h3>
+        <select id="factory-n" class="edit-area" style="width:80px;height:30px;padding:2px 6px;font-size:13px">
+          <option value="2">出 2 道</option>
+          <option value="3" selected>出 3 道</option>
+          <option value="4">出 4 道</option>
+          <option value="5">出 5 道</option>
+        </select>
+        <button id="factory-start-btn" onclick="startFactory()" class="btn btn-primary btn-sm">🚀 开始生成</button>
+        <button id="factory-stop-btn" onclick="stopFactory()" class="btn btn-ghost btn-sm" style="display:none;color:#ef4444">⏹ 停止</button>
+      </div>
+      <button onclick="closeFactoryModal()" class="text-slate-400 text-2xl leading-none">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:340px 1fr;gap:14px;flex:1;min-height:0">
+      <!-- 左：Agent 执行轨迹 -->
+      <div style="display:flex;flex-direction:column;min-height:0;border:1px solid #e2e8f0;border-radius:10px;background:#0f172a;color:#cbd5e1">
+        <div style="padding:8px 12px;font-size:12px;color:#94a3b8;border-bottom:1px solid #1e293b;display:flex;justify-content:space-between;align-items:center">
+          <span>🧠 Agent 执行轨迹</span>
+          <span id="factory-graph-status" style="font-size:11px;color:#22d3ee"></span>
+        </div>
+        <div id="factory-log" style="flex:1;overflow-y:auto;padding:10px 12px;font-family:'Consolas',monospace;font-size:12px;line-height:1.7"></div>
+      </div>
+      <!-- 右：变式题卡片网格 -->
+      <div style="display:flex;flex-direction:column;min-height:0">
+        <div style="padding-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+          <div class="text-sm text-slate-600">📝 生成结果（教师可勾选采纳后入库）</div>
+          <button id="factory-save-draft-btn" onclick="saveFactoryDraft()" class="btn btn-ghost btn-sm" disabled style="color:#f59e0b;border:1px solid #fcd34d">💾 保存草稿</button>
+          <button id="factory-clear-draft-btn" onclick="clearFactoryDraft()" class="btn btn-ghost btn-sm" style="display:none;color:#ef4444">🗑️ 清空草稿</button>
+          <button id="factory-accept-btn" onclick="acceptVariants()" class="btn btn-green btn-sm" disabled>✅ 采纳选中并入库</button>
+        </div>
+        <div id="factory-variants" style="flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px;align-content:start;padding:4px">
+          <div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:60px 0;font-size:13px">点击「🚀 开始生成」让 Agent 工厂运转…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════
+//  状态
+// ════════════════════════════════════
+let currentUser = null;
+let exams = [];
+let currentExam = null;
+let currentTab = 'questions';
+let ggbApp = null;
+let editingVizQid = null;
+let editingVizId = null;
+let uploadFile = null;      // 试卷文件
+let uploadAnswerFile = null; // 答案解析文件（可选）
+
+const MATH_STYLE = {
+  function:          {color:'#3b82f6',bg:'#dbeafe',label:'函数'},
+  derivative:        {color:'#8b5cf6',bg:'#ede9fe',label:'导数'},
+  solid_geometry:    {color:'#10b981',bg:'#d1fae5',label:'立体几何'},
+  conic_curve:       {color:'#f59e0b',bg:'#fef3c7',label:'圆锥曲线'},
+  trigonometric:     {color:'#ef4444',bg:'#fee2e2',label:'三角函数'},
+  vector:            {color:'#ec4899',bg:'#fce7f3',label:'向量'},
+  inequality:        {color:'#0ea5e9',bg:'#e0f2fe',label:'不等式'},
+  sequence:          {color:'#14b8a6',bg:'#ccfbf1',label:'数列'},
+  probability:       {color:'#f97316',bg:'#ffedd5',label:'概率统计'},
+  complex_number:    {color:'#6366f1',bg:'#e0e7ff',label:'复数'},
+  triangle_solution: {color:'#84cc16',bg:'#ecfccb',label:'解三角形'},
+  set_logic:         {color:'#64748b',bg:'#f1f5f9',label:'集合逻辑'},
+  other:             {color:'#64748b',bg:'#f1f5f9',label:'其他'},
+};
+const VISUAL_CATS = new Set(['solid_geometry','conic_curve','function','derivative','trigonometric','vector']);
+
+// ════════════════════════════════════
+//  初始化
+// ════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  const raw = sessionStorage.getItem('academy_user');
+  if (!raw) { location.href = '/academy-login.html'; return; }
+  currentUser = JSON.parse(raw);
+  if (!['teacher','admin'].includes(currentUser.role)) {
+    location.href = '/academy-student.html'; return;
+  }
+  document.getElementById('user-info').textContent = currentUser.name || currentUser.username;
+  loadExams();
+  initDropZone();
+});
+
+function logout() {
+  sessionStorage.removeItem('academy_user');
+  location.href = '/academy-login.html';
+}
+
+// ════════════════════════════════════
+//  试卷列表
+// ════════════════════════════════════
+async function loadExams() {
+  const r = await fetch('/api/academy/exams');
+  const data = await r.json();
+  exams = Array.isArray(data) ? data : (data.exams || []);
+  // 按创建时间倒序
+  exams.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+  renderExamList();
+  // 若当前没有打开的试卷，展示首页卡片
+  if (!currentExam) showExamHome();
+}
+
+// ════════════════════════════════════
+//  🏠 试卷首页（卡片视图）
+// ════════════════════════════════════
+function showExamHome() {
+  _allFeedbackView = false;
+  currentExam = null;
+  _detailQid = null;
+  document.getElementById('exam-title').textContent = '';
+  const tb = document.getElementById('tabs-bar'); if (tb) tb.style.display = 'none';
+  const ag = document.getElementById('btn-agents'); if (ag) ag.classList.add('hidden');
+  // 高亮首页按钮
+  ['nav-feedback','nav-geoboard'].forEach(id=>{const b=document.getElementById(id);if(b)b.classList.remove('bg-indigo-900','text-white');});
+  const navHome = document.getElementById('nav-home');
+  if (navHome) { navHome.classList.add('bg-indigo-900','text-white'); }
+  renderExamList();
+  _renderExamHome();
+}
+
+function _renderExamHome() {
+  const area = document.getElementById('content-area');
+  if (!area) return;
+  const filter = window._examHomeFilter || 'all';
+  const list = exams.filter(e => filter==='all' ? true : (filter==='published' ? e.published : !e.published));
+  const cards = list.map(e => {
+    const time = _fmtTime(e.created_at);
+    const pub  = e.published
+      ? '<span class="badge" style="background:#d1fae5;color:#065f46">已发布</span>'
+      : '<span class="badge" style="background:#fef3c7;color:#92400e">草稿</span>';
+    const title = escHtml(e.title || '未命名');
+    const ftype = escHtml(e.file_type || '');
+    const safeTitle = (e.title||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return `
+      <div class="exam-card" onclick="selectExam('${e.id}')"
+           style="position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;cursor:pointer;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.04);min-height:170px;display:flex;flex-direction:column"
+           onmouseover="this.style.borderColor='#6366f1';this.style.boxShadow='0 6px 18px rgba(99,102,241,.18)';this.style.transform='translateY(-3px)'"
+           onmouseout="this.style.borderColor='#e2e8f0';this.style.boxShadow='0 1px 2px rgba(0,0,0,.04)';this.style.transform='translateY(0)'">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px">
+          <div style="font-size:34px;line-height:1">📘</div>
+          ${pub}
+        </div>
+        <div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:42px">
+          ${title}
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#64748b;margin-top:12px;padding-top:10px;border-top:1px dashed #e2e8f0">
+          <span>📝 ${e.question_count||0} 题${ftype?(' · '+ftype):''}</span>
+          <span>${time}</span>
+        </div>
+        <div style="position:absolute;top:10px;right:10px" onclick="event.stopPropagation()">
+          <button onclick="_toggleCardMenu(event,'${e.id}')"
+            title="更多操作"
+            style="background:#f1f5f9;border:none;color:#64748b;cursor:pointer;font-size:14px;padding:2px 8px;border-radius:6px;line-height:1"
+            onmouseover="this.style.background='#e2e8f0';this.style.color='#0f172a'"
+            onmouseout="this.style.background='#f1f5f9';this.style.color='#64748b'">⋯</button>
+          <div id="card-menu-${e.id}" style="display:none;position:absolute;top:28px;right:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 20px rgba(0,0,0,.1);min-width:140px;z-index:50;overflow:hidden">
+            <button onclick="_closeAllCardMenus();selectExam('${e.id}')" class="card-menu-item">📂 打开</button>
+            <button onclick="_closeAllCardMenus();renameExam('${e.id}','${safeTitle}')" class="card-menu-item">✏️ 重命名</button>
+            <button onclick="_closeAllCardMenus();togglePublishExam('${e.id}',${!!e.published})" class="card-menu-item">${e.published?'📥 取消发布':'📤 发布试卷'}</button>
+            ${e.published ? `<button onclick="_closeAllCardMenus();quickToggleAnswerVisibility('${e.id}',${!!e.allow_view_answer})" class="card-menu-item">${e.allow_view_answer?'🔒 隐藏答案':'🔓 开放答案'}</button>` : ''}
+            <div style="height:1px;background:#e2e8f0"></div>
+            <button onclick="_closeAllCardMenus();deleteExam('${e.id}','${safeTitle}')" class="card-menu-item" style="color:#dc2626">🗑️ 删除</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+  const upload = `
+    <div class="exam-card" onclick="openUploadModal()"
+         style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f8fafc;border:2px dashed #cbd5e1;border-radius:14px;padding:18px;cursor:pointer;min-height:170px;color:#64748b;transition:all .15s"
+         onmouseover="this.style.borderColor='#6366f1';this.style.color='#6366f1';this.style.background='#eef2ff'"
+         onmouseout="this.style.borderColor='#cbd5e1';this.style.color='#64748b';this.style.background='#f8fafc'">
+      <div style="font-size:38px;margin-bottom:8px">＋</div>
+      <div style="font-size:14px;font-weight:500">上传新试卷</div>
+    </div>`;
+  const pubCount = exams.filter(e=>e.published).length;
+  const draftCount = exams.length - pubCount;
+  const tabBtn = (key, label, count) => `
+    <button onclick="_setExamHomeFilter('${key}')"
+      style="padding:6px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:500;
+      background:${filter===key?'#6366f1':'transparent'};color:${filter===key?'#fff':'#64748b'};transition:all .15s">
+      ${label} <span style="opacity:.75">(${count})</span>
+    </button>`;
+  area.innerHTML = `
+    <div style="padding:0 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:16px;flex-wrap:wrap">
+        <h1 style="font-size:24px;font-weight:600;color:#1e293b;margin:0">📚 全部试卷</h1>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="display:inline-flex;background:#f1f5f9;padding:4px;border-radius:10px;gap:2px">
+            ${tabBtn('all','全部',exams.length)}
+            ${tabBtn('published','已发布',pubCount)}
+            ${tabBtn('draft','草稿',draftCount)}
+          </div>
+          <input id="home-search" type="text" placeholder="🔍 搜索试卷标题…" oninput="_filterExamHome(this.value)"
+                 style="padding:8px 14px;border:1px solid #e2e8f0;border-radius:10px;font-size:13px;width:240px;background:#fff">
+          <button onclick="openUploadModal()" class="btn btn-primary" style="padding:8px 16px;font-size:13px">+ 新建试卷</button>
+        </div>
+      </div>
+      <div id="exam-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px">
+        ${cards}${filter==='all'||list.length===0?upload:''}
+      </div>
+      ${list.length===0 ? `<div style="text-align:center;color:#94a3b8;padding:60px 0;font-size:14px">${filter==='all'?'暂无试卷，点上方「+ 新建试卷」上传一份开始':'此分类下暂无试卷'}</div>` : ''}
+    </div>`;
+  area.scrollTop = 0;
+  document.addEventListener('click', _closeAllCardMenus, { once: true });
+}
+
+function _setExamHomeFilter(k){ window._examHomeFilter = k; _renderExamHome(); }
+
+function _toggleCardMenu(ev, id){
+  ev.stopPropagation();
+  const m = document.getElementById('card-menu-'+id);
+  const opening = m && m.style.display === 'none';
+  _closeAllCardMenus();
+  if (opening) {
+    m.style.display = 'block';
+    setTimeout(() => document.addEventListener('click', _closeAllCardMenus, { once: true }), 0);
+  }
+}
+
+function _closeAllCardMenus(){
+  document.querySelectorAll('[id^="card-menu-"]').forEach(el => el.style.display = 'none');
+}
+
+async function renameExam(id, oldTitle){
+  const t = prompt('重命名试卷：', oldTitle || '');
+  if (t === null) return;
+  const title = t.trim();
+  if (!title || title === oldTitle) return;
+  const r = await fetch(`/api/academy/exams/${id}`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ title })
+  });
+  if (r.ok) { showToast('✅ 已重命名'); await loadExams(); }
+  else showToast('✗ 改名失败','error');
+}
+
+async function togglePublishExam(id, isPublished){
+  const url = `/api/academy/exams/${id}/${isPublished?'unpublish':'publish'}`;
+  const r = await fetch(url, { method: 'POST' });
+  if (r.ok) { showToast(isPublished?'已取消发布':'✅ 已发布'); await loadExams(); }
+  else showToast('✗ 操作失败','error');
+}
+
+function _filterExamHome(kw) {
+  kw = (kw||'').trim().toLowerCase();
+  const grid = document.getElementById('exam-cards-grid'); if (!grid) return;
+  Array.from(grid.children).forEach(card => {
+    const txt = (card.innerText||'').toLowerCase();
+    card.style.display = (!kw || txt.includes(kw) || card.innerText.includes('上传新试卷')) ? '' : 'none';
+  });
+}
+
+function _fmtTime(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    return `${y}-${m}-${dd} ${hh}:${mm}`;
+  } catch(e) { return ''; }
+}
+
+function renderExamList() {
+  const el = document.getElementById('exam-list');
+  if (!exams.length) { el.innerHTML = '<div class="text-indigo-400 text-xs px-2 py-2">暂无试卷</div>'; return; }
+  el.innerHTML = exams.map(e => `
+    <div class="exam-item ${currentExam?.id===e.id?'active':''}" style="display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:6px 8px;cursor:pointer">
+      <div style="display:flex;align-items:center;gap:6px" onclick="selectExam('${e.id}')">
+        <span class="flex-1 truncate text-sm" style="min-width:0">${escHtml(e.title||'未命名')}</span>
+        ${e.published ? '<span class="badge" style="background:#d1fae5;color:#065f46">已发布</span>' : ''}
+        <button onclick="event.stopPropagation();deleteExam('${e.id}','${escHtml(e.title||'').replace(/'/g,"\\'")}')"
+          title="删除试卷"
+          style="background:transparent;border:none;color:#fca5a5;cursor:pointer;font-size:13px;padding:0 4px">×</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#a5b4fc;padding-left:2px">
+        <span>${e.question_count||0} 题 · ${e.file_type||''}</span>
+        <span title="${e.created_at||''}">${_fmtTime(e.created_at)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteExam(id, title) {
+  if (!confirm(`确认删除试卷「${title}」？\n此操作不可恢复。`)) return;
+  const r = await fetch(`/api/academy/exams/${id}`, { method: 'DELETE' });
+  if (r.ok) {
+    showToast('✅ 已删除');
+    if (currentExam?.id === id) {
+      currentExam = null;
+      document.getElementById('exam-title').textContent = '';
+      document.getElementById('tabs-bar').style.display = 'none';
+    }
+    await loadExams();
+    if (!currentExam) showExamHome();
+  } else {
+    showToast('✗ 删除失败', 'error');
+  }
+}
+
+async function selectExam(id) {
+  _allFeedbackView = false;
+  // 取消快捷导航高亮
+  const navHome = document.getElementById('nav-home');
+  if (navHome) navHome.classList.remove('bg-indigo-900','text-white');
+  const navFb = document.getElementById('nav-feedback');
+  if (navFb) navFb.classList.remove('bg-indigo-900','text-white');
+  const navGb = document.getElementById('nav-geoboard');
+  if (navGb) navGb.classList.remove('bg-indigo-900','text-white');
+  const r = await fetch(`/api/academy/exams/${id}`);
+  const data = await r.json();
+  currentExam = data.exam || data;
+  _detailQid = null;
+  renderExamList();
+  showExamUI();
+  renderTab();
+}
+
+function showExamUI() {
+  document.getElementById('exam-title').textContent = currentExam.title || '未命名试卷';
+  document.getElementById('tabs-bar').style.display = 'flex';
+  document.getElementById('btn-agents').classList.remove('hidden');
+  if (currentExam.published) {
+    document.getElementById('btn-publish').classList.add('hidden');
+    document.getElementById('btn-unpublish').classList.remove('hidden');
+  } else {
+    document.getElementById('btn-publish').classList.remove('hidden');
+    document.getElementById('btn-unpublish').classList.add('hidden');
+  }
+}
+
+// ════════════════════════════════════
+//  Tabs
+// ════════════════════════════════════
+function switchTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderTab();
+}
+
+function renderTab() {
+  if (!currentExam) return;
+  if (currentTab === 'questions') renderQuestions();
+  else if (currentTab === 'feedback') renderFeedback();
+  else renderPublishConfig();
+}
+
+// ════════════════════════════════════
+//  题目列表（紧凑卡片，点击进入详情）
+// ════════════════════════════════════
+let _detailQid = null;  // null 表示列表视图
+
+function renderQuestions() {
+  const qs = currentExam.questions || [];
+  const area = document.getElementById('content-area');
+  if (!qs.length) {
+    area.innerHTML = '<div class="text-slate-400 text-center py-20">暂无题目，请先运行解析</div>'; return;
+  }
+  if (_detailQid) {
+    const q = qs.find(x => String(x.id||x.number) === String(_detailQid));
+    if (q) { renderQuestionDetail(q); return; }
+    _detailQid = null;
+  }
+  // 列表视图
+  const pendingCount = qs.filter(q => _qPending(q)).length;
+  const pendingBar = pendingCount ? `
+    <div class="mb-3 flex items-center justify-between p-3 rounded-xl"
+         style="background:linear-gradient(135deg,#fff7ed,#ffedd5);border:1px solid #fed7aa">
+      <div class="text-sm" style="color:#9a3412">
+        ⚠️ 有 <b>${pendingCount}</b> 道题在发布后被修改，学生看到的仍是旧版本
+      </div>
+      <button onclick="republishAllPending()" class="btn btn-sm"
+              style="background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;border:none">
+        🔄 一键重新发布全部
+      </button>
+    </div>` : '';
+  area.innerHTML = `
+    <div class="mb-3 flex items-center justify-between">
+      <div class="text-sm text-slate-500">共 <b class="text-slate-700">${qs.length}</b> 道题，点击进入编辑</div>
+    </div>
+    ${pendingBar}
+    <div>${qs.map((q,i) => buildQListRow(q,i)).join('')}</div>
+  `;
+  // 渲染题目预览中的 LaTeX
+  renderMathIn(area);
+}
+
+function buildQListRow(q, i) {
+  const cat = q.category || 'other';
+  const style = MATH_STYLE[cat] || MATH_STYLE.other;
+  const qid = q.id || String(q.number || i+1);
+  const hasViz = !!q.geogebra_code;
+  const hasAns = !!(q.answer && String(q.answer).trim());
+  const ansOpen = _qAllowVisible(q);
+  return `
+    <div class="q-list-item" id="qcard-${qid}"
+         onclick="openQuestionDetail('${qid}')"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="dropGeoOnCard(event,'${qid}')">
+      <div class="q-num">Q${q.number||i+1}</div>
+      <span class="cat-badge" style="background:${style.bg};color:${style.color}">${style.label}</span>
+      <div class="q-preview">${escHtml(q.content||'(空)')}</div>
+      <div class="q-tail">
+        <span class="q-mini-tag">${q.type||''}</span>
+        ${hasAns ? '<span class="q-mini-tag ok">✓答</span>' : ''}
+        ${hasViz ? '<span class="q-mini-tag ok">📐图</span>' : ''}
+        ${_qPending(q) ? `<span class="q-mini-tag pending" onclick="event.stopPropagation();republishQuestion('${qid}')" title="该题有未发布的修改，点击重新发布" style="cursor:pointer">🔄 待重发</span>` : ''}
+        <span class="q-mini-tag" onclick="event.stopPropagation();toggleQuestionAnswerVisibility('${qid}')"
+              title="点击切换该题答案对学生可见性"
+              style="cursor:pointer;${ansOpen?'background:#d1fae5;color:#059669':'background:#fef3c7;color:#d97706'}">${ansOpen?'🔓':'🔒'}</span>
+        <svg class="w-4 h-4 text-slate-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
+      </div>
+    </div>
+  `;
+}
+
+function openQuestionDetail(qid) {
+  _detailQid = qid;
+  renderQuestions();
+  document.getElementById('content-area').scrollTop = 0;
+}
+
+function backToQuestionList() {
+  _detailQid = null;
+  renderQuestions();
+}
+
+function gotoSiblingQuestion(delta) {
+  const qs = currentExam.questions || [];
+  const idx = qs.findIndex(x => String(x.id||x.number) === String(_detailQid));
+  if (idx < 0) return;
+  const next = qs[idx + delta];
+  if (next) openQuestionDetail(next.id || String(next.number));
+}
+
+function renderQuestionDetail(q) {
+  const cat = q.category || 'other';
+  const style = MATH_STYLE[cat] || MATH_STYLE.other;
+  const qid = q.id || String(q.number);
+  const qs = currentExam.questions || [];
+  const idx = qs.findIndex(x => String(x.id||x.number) === String(qid));
+  const total = qs.length;
+  const isCustomCat = !MATH_STYLE[cat];
+  const catLabel = isCustomCat ? cat : style.label;
+
+  const optionsHtml = (q.options && Object.keys(q.options).length)
+    ? `<div class="mt-4">
+        <div class="text-sm text-slate-500 mb-2 font-semibold">选项</div>
+        <div class="grid grid-cols-1 gap-2">
+          ${Object.entries(q.options).map(([k,v]) => `
+            <div class="flex gap-3 items-start" style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:12px 16px;font-size:16px;line-height:1.7">
+              <span class="font-bold text-indigo-500" style="min-width:28px">${escHtml(k)}.</span>
+              <span class="flex-1">${escHtml(v)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>` : '';
+
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+  <div class="q-detail-wrap">
+    <!-- 顶部工具栏 -->
+    <div class="q-detail-toolbar">
+      <div class="flex items-center gap-3" style="min-width:0;flex:1">
+        <button class="nav-btn" onclick="backToQuestionList()">← 返回列表</button>
+        <span class="cat-badge" style="background:${style.bg};color:${style.color};cursor:pointer" onclick="openQEditModal('${qid}','category')" title="点击修改类别">${escHtml(catLabel)} ✎</span>
+        <span class="crumb truncate"><span class="num">Q${q.number||idx+1}</span><span class="katex-target">${escHtml((q.content||'').slice(0,80))}${(q.content||'').length>80?'…':''}</span></span>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <span class="text-sm text-slate-400">${idx+1} / ${total}</span>
+        ${currentExam?.published ? `
+          <button class="nav-btn" onclick="republishQuestion('${qid}')"
+                  style="${_qPending(q)
+                    ? 'background:linear-gradient(135deg,#f59e0b,#ea580c);color:#fff;border:none;animation:pulse-orange 1.6s ease-in-out infinite'
+                    : 'background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0'}"
+                  title="${_qPending(q) ? '该题有未发布的修改，点击推送给学生' : '该题已是最新发布版本'}">
+            ${_qPending(q) ? `🔄 重新发布该题（${(q.pending_fields||[]).length||'?'}处变更）` : `✅ 已是最新 v${q.version||1}`}
+          </button>
+          <button class="nav-btn" onclick="toggleQuestionAnswerVisibility('${qid}')"
+                  style="${_qAllowVisible(q)
+                    ? 'background:#fff7ed;color:#c2410c;border:1px solid #fed7aa'
+                    : 'background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none'}"
+                  title="一键控制本题答案是否对学生开放">
+            ${_qAllowVisible(q) ? '🔒 收回该题答案' : '📢 发布该题答案给学生'}
+          </button>` : `
+          <button class="nav-btn" disabled
+                  style="background:#f1f5f9;color:#94a3b8;border:1px dashed #cbd5e1;cursor:not-allowed"
+                  title="试卷尚未发布，请先到「发布配置」发布整卷">
+            📢 发布该题答案（需先发布试卷）
+          </button>`}
+        <button class="nav-btn" onclick="openFactoryModal('${qid}')" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none">🪄 出变式题</button>
+        <button class="nav-btn" onclick="gotoSiblingQuestion(-1)" ${idx<=0?'disabled':''}>← 上一题</button>
+        <button class="nav-btn" onclick="gotoSiblingQuestion(1)" ${idx>=total-1?'disabled':''}>下一题 →</button>
+      </div>
+    </div>
+
+    <div class="q-detail-grid">
+      <!-- 左：题目预览（学生视角） -->
+      <div>
+        <div class="q-panel">
+          <div class="q-panel-head">
+            <span>📖 题目内容</span>
+            <button class="btn btn-ghost btn-sm" onclick="openQEditModal('${qid}','content')">✏️ 编辑</button>
+          </div>
+          <div class="q-panel-body">
+            <div class="q-render-box ${q.content?'':'empty'}" id="view-content-${qid}">${q.content ? escHtml(q.content) : '点击右上角 ✏️ 编辑题目内容'}</div>
+            ${optionsHtml}
+          </div>
+        </div>
+
+        <div class="q-panel mt-4">
+          <div class="q-panel-head">
+            <span>✅ 参考答案</span>
+            <div class="flex gap-2 items-center">
+              <button class="btn btn-ghost btn-sm" onclick="toggleQuestionAnswerVisibility('${qid}')"
+                      title="切换该题答案/解析是否对学生可见"
+                      style="${_qAllowVisible(q) ? 'color:#059669' : 'color:#d97706'}">
+                ${_qAllowVisible(q) ? '🔓 学生可见' : '🔒 学生不可见'}
+              </button>
+              <button class="btn btn-ghost btn-sm" onclick="openQEditModal('${qid}','answer')">✏️ 编辑</button>
+            </div>
+          </div>
+          <div class="q-panel-body">
+            <div class="q-render-box ${q.answer?'':'empty'}" id="view-answer-${qid}" style="background:#ecfdf5;border-color:#a7f3d0">${q.answer ? escHtml(q.answer) : '尚未填写答案，点击编辑'}</div>
+          </div>
+        </div>
+
+        <div class="q-panel mt-4">
+          <div class="q-panel-head">
+            <span>💡 解析</span>
+            <div class="flex gap-2">
+              <button onclick="solveOne('${qid}','${currentExam.id}').then(()=>refreshQViewDetail('${qid}'))" class="btn btn-ghost btn-sm">🤖 AI 解题</button>
+              <button class="btn btn-primary btn-sm" onclick="openQEditModal('${qid}','solution')">✏️ 编辑</button>
+            </div>
+          </div>
+          <div class="q-panel-body">
+            <div class="q-render-box ${q.solution?'':'empty'}" id="view-solution-${qid}" style="background:#fefce8;border-color:#fde68a">${q.solution ? escHtml(q.solution) : '尚未填写解析。点击「AI 解题」或「✏️ 编辑」'}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右：几何画板 + 资源 -->
+      <div>
+        <div class="q-panel">
+          <div class="q-panel-head">
+            <span>📐 几何画板（2D / 3D）</span>
+            <div class="flex gap-2">
+              <button onclick="aiGenerateVizInline('${qid}','${currentExam.id}').then(()=>selectExam(currentExam.id))" class="btn btn-ghost btn-sm">🤖 AI 生成</button>
+              <button onclick="openQGeoModal('${qid}')" class="btn btn-primary btn-sm">🎨 打开画板</button>
+            </div>
+          </div>
+          <div class="q-panel-body">
+            <div id="geo-preview-${qid}" style="width:100%;min-height:280px;border:1px solid #eef2f7;border-radius:10px;background:#fafbfd;position:relative">
+              ${q.geogebra_code
+                ? `<div class="text-green-600 text-sm p-3" id="geo-info-${qid}">✓ 已绑定几何图形，点击「打开画板」可继续编辑</div>
+                   <div id="geo-mini-${qid}" style="width:100%;height:340px"></div>`
+                : '<div class="text-slate-400 text-sm py-12 text-center">暂无图形 — 点击「🎨 打开画板」使用 2D / 3D GeoGebra 创建</div>'}
+            </div>
+          </div>
+        </div>
+
+        <div class="q-panel mt-4">
+          <div class="q-panel-head">
+            <span>🧰 教学资源</span>
+            <button onclick="document.getElementById('res-input-${qid}').click()" class="btn btn-primary btn-sm">+ 上传</button>
+            <input type="file" id="res-input-${qid}" class="hidden" multiple
+              accept="video/*,audio/*,image/*,.glb,.gltf,.obj,.pdf"
+              onchange="uploadResources(this,'${qid}','${currentExam.id}')">
+          </div>
+          <div class="q-panel-body">
+            <div class="upload-card mb-3" id="upload-zone-${qid}"
+                 onclick="document.getElementById('res-input-${qid}').click()">
+              <div class="icon">📤</div>
+              <div style="font-size:15px;color:#475569;font-weight:500">点击上传，或将文件拖入此处</div>
+              <div class="text-xs text-slate-400">图片 / 视频 / 音频 / 3D 模型（glb·gltf·obj）/ PDF</div>
+            </div>
+            <div id="res-list-${qid}" class="res-grid">
+              <span class="text-xs text-slate-400">加载中…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  `;
+
+  loadResources(qid);
+  _initUploadDropZone(qid);
+  renderMathIn(area);
+  // 若有几何代码，渲染只读 mini 预览
+  if (q.geogebra_code) _renderQGeoMiniPreview(qid, q.geogebra_code);
+}
+
+// ── 渲染只读 GeoGebra 缩略 ──
+function _renderQGeoMiniPreview(qid, code) {
+  const elId = `geo-mini-${qid}`;
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(qid));
+  const engine = q?.viz_engine
+    || (/\\begin\{tikzpicture\}/i.test(code) ? 'tikz'
+        : /Sphere\(|f\(x,y\)|Surface\(|Cube\(|Cylinder\(/i.test(code) ? '3d' : '2d');
+
+  if (engine === 'tikz') {
+    el.innerHTML = '<div style="padding:10px;color:#6366f1;font-size:12px">⏳ 渲染 TikZ…</div>';
+    fetch('/api/render-tikz', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({code})
+    }).then(r=>r.json()).then(d=>{
+      if (d.ok && d.url) {
+        el.innerHTML = `<img src="${d.url}" style="max-width:100%;max-height:340px;display:block;margin:0 auto" alt="TikZ">`;
+      } else {
+        el.innerHTML = `<div style="padding:10px;color:#ef4444;font-size:12px">⚠️ ${escHtml(d.error||'渲染失败')}</div>`;
+      }
+    }).catch(e => {
+      el.innerHTML = `<div style="padding:10px;color:#ef4444;font-size:12px">⚠️ ${escHtml(e.message)}</div>`;
+    });
+    return;
+  }
+
+  const inject = () => {
+    new GGBApplet({
+      appName: engine==='3d' ? '3d' : 'classic',
+      width: el.offsetWidth || 380, height: 320,
+      showMenuBar:false, showToolBar:false, showAlgebraInput:false,
+      enableLabelDrags:false, enableShiftDragZoom:true, enableRightClick:false,
+      showResetIcon:true,
+      appletOnLoad(api){
+        try { api.setErrorDialogsActive(false); } catch(_) {}
+        try {
+          code.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'))
+              .forEach(c => { try{api.evalCommand(c);}catch(_){} });
+        } catch(_) {}
+      }
+    }, elId).inject(elId);
+  };
+  if (typeof GGBApplet === 'undefined') {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.geogebra.org/apps/deployggb.js';
+    s.onload = inject;
+    document.head.appendChild(s);
+  } else {
+    inject();
+  }
+}
+
+// ── 刷新当前详情视图（保存后重新渲染）──
+function refreshQViewDetail(qid) {
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(qid));
+  if (!q) return;
+  const map = {content:'view-content', answer:'view-answer', solution:'view-solution'};
+  for (const [k, prefix] of Object.entries(map)) {
+    const box = document.getElementById(`${prefix}-${qid}`);
+    if (box) {
+      const v = q[k] || '';
+      box.textContent = v || (k==='content'?'点击右上角 ✏️ 编辑题目内容':k==='answer'?'尚未填写答案，点击编辑':'尚未填写解析');
+      box.classList.toggle('empty', !v);
+      renderMathIn(box);
+    }
+  }
+}
+
+// ════════════════════════════════════
+//  题目字段编辑 Modal（统一入口）
+// ════════════════════════════════════
+let _qEditCtx = null;  // {qid, field}
+
+function openQEditModal(qid, field) {
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(qid));
+  if (!q) return;
+  _qEditCtx = { qid, field };
+
+  const meta = {
+    content:  { title:'编辑题目内容', placeholder:'在此输入题目，支持 LaTeX 公式…', minH:160 },
+    answer:   { title:'编辑参考答案', placeholder:'如：$\\{x | 0 < x \\leq 1\\}$', minH:80 },
+    solution: { title:'编辑解析（可上传文件）', placeholder:'解题思路、步骤，支持 LaTeX…', minH:220 },
+    category: { title:'编辑题目类别', placeholder:'', minH:0 },
+  }[field];
+
+  const modal = document.getElementById('q-edit-modal');
+  const title = document.getElementById('q-edit-title');
+  const body = document.getElementById('q-edit-body');
+  title.textContent = meta.title;
+
+  if (field === 'category') {
+    const cat = q.category || 'other';
+    const isCustom = !MATH_STYLE[cat];
+    body.innerHTML = `
+      <div class="q-edit-section">
+        <label>从已有类别中选择</label>
+        <div class="cat-input-wrap">
+          <select class="edit-area" style="height:42px;resize:none" id="qe-cat-select">
+            ${isCustom ? `<option value="${escHtml(cat)}" selected>${escHtml(cat)}（当前）</option>` : ''}
+            ${Object.entries(MATH_STYLE).map(([k,v])=>`<option value="${k}" ${cat===k?'selected':''}>${v.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="q-edit-section">
+        <label>或输入自定义类别名称</label>
+        <input class="edit-area" style="height:42px" id="qe-cat-custom" placeholder="例如：导数应用、立体几何拓展…">
+        <div class="text-xs text-slate-400 mt-2">填写自定义名称后将覆盖上方选项</div>
+      </div>
+    `;
+  } else {
+    const val = q[field] || '';
+    body.innerHTML = `
+      <div class="q-edit-section">
+        ${_latexToolbar('qe-text')}
+        <textarea class="edit-area" id="qe-text" style="min-height:${meta.minH}px"
+          oninput="schedulePreviewModal()" placeholder="${meta.placeholder}">${escHtml(val)}</textarea>
+        ${field==='solution' ? `
+          <div class="flex gap-2 mt-2 flex-wrap">
+            <button onclick="solveOneInModal()" class="btn btn-primary btn-sm">🤖 AI 一键解题</button>
+            <button onclick="document.getElementById('qe-sol-file').click()" class="btn btn-ghost btn-sm">📄 上传解析文件</button>
+            <input type="file" id="qe-sol-file" class="hidden" accept=".txt,.md,.pdf,.docx,.doc,image/*"
+              onchange="uploadSolFileToModal(this)">
+          </div>` : ''}
+        <div class="text-xs text-slate-500 mt-3 mb-1 font-semibold">✨ 实时预览</div>
+        <div class="live-preview ${val?'':'empty'}" id="qe-preview" style="${
+          field==='answer' ? 'background:#ecfdf5;border-color:#a7f3d0' :
+          field==='solution' ? 'background:#fefce8;border-color:#fde68a;max-height:280px' : ''
+        }">${val ? escHtml(val) : '预览将在此显示'}</div>
+      </div>
+    `;
+  }
+  modal.classList.add('open');
+  setTimeout(() => {
+    const ta = document.getElementById('qe-text');
+    if (ta) { ta.focus(); refreshPreviewModal(); }
+  }, 30);
+}
+
+function closeQEditModal() {
+  document.getElementById('q-edit-modal').classList.remove('open');
+  _qEditCtx = null;
+}
+
+let _qeTimer = null;
+function schedulePreviewModal() {
+  clearTimeout(_qeTimer);
+  _qeTimer = setTimeout(refreshPreviewModal, 300);
+}
+
+function refreshPreviewModal() {
+  const ta = document.getElementById('qe-text');
+  const box = document.getElementById('qe-preview');
+  if (!ta || !box) return;
+  const v = ta.value || '';
+  box.textContent = v || '预览将在此显示';
+  box.classList.toggle('empty', !v);
+  renderMathIn(box);
+}
+
+async function saveQEditModal() {
+  if (!_qEditCtx) return;
+  const { qid, field } = _qEditCtx;
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(qid));
+  if (!q) return;
+
+  let payload = {};
+  if (field === 'category') {
+    const custom = document.getElementById('qe-cat-custom')?.value.trim();
+    const sel = document.getElementById('qe-cat-select')?.value;
+    payload.category = custom || sel || 'other';
+  } else {
+    payload[field] = document.getElementById('qe-text')?.value || '';
+  }
+
+  const r = await fetch(`/api/academy/exams/${currentExam.id}/questions/${qid}`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  if (r.ok) {
+    Object.assign(q, payload);
+    showToast('已保存');
+    closeQEditModal();
+    if (field === 'category') {
+      // 重新渲染整个详情以刷新徽章
+      renderQuestionDetail(q);
+    } else {
+      refreshQViewDetail(qid);
+    }
+  } else {
+    showToast('保存失败','error');
+  }
+}
+
+async function solveOneInModal() {
+  if (!_qEditCtx) return;
+  const { qid } = _qEditCtx;
+  showToast('AI 解题中…','info');
+  const r = await fetch(`/api/academy/exams/${currentExam.id}/questions/${qid}/solve`,{method:'POST'});
+  if (r.ok) {
+    const data = await r.json();
+    const ta = document.getElementById('qe-text');
+    if (ta) { ta.value = data.solution || ''; ta.dispatchEvent(new Event('input')); }
+    showToast('解题完成');
+  }
+}
+
+async function uploadSolFileToModal(input) {
+  const f = input.files[0];
+  if (!f) return;
+  showToast('解析中…', 'info');
+  try {
+    let text = '';
+    if (/\.(txt|md)$/i.test(f.name)) {
+      text = await f.text();
+    } else {
+      const fd = new FormData(); fd.append('file', f);
+      const r = await fetch('/api/academy/extract-text', { method:'POST', body: fd });
+      if (r.ok) { const d = await r.json(); text = d.text || ''; }
+    }
+    if (text) {
+      const ta = document.getElementById('qe-text');
+      if (ta) {
+        ta.value = (ta.value ? ta.value + '\n\n' : '') + text;
+        ta.dispatchEvent(new Event('input'));
+      }
+      showToast('已导入');
+    } else {
+      showToast('未提取到文本','warn');
+    }
+  } catch(e) { showToast('上传失败：'+e.message,'error'); }
+  finally { input.value=''; }
+}
+
+// ════════════════════════════════════
+//  几何画板 Modal（2D / 3D / TikZ + AI 结合题意）
+// ════════════════════════════════════
+let _qGeoCtx = null;        // {qid}
+let _qGeoMode = '2d';       // '2d' | '3d' | 'tikz'
+let _qGeoApp = null;
+
+function openQGeoModal(qid) {
+  _qGeoCtx = { qid };
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(qid));
+  const code = q?.geogebra_code || '';
+  // 优先使用题目保存的引擎；否则按代码内容判断
+  const savedEngine = q?.viz_engine;
+  if (savedEngine === 'tikz' || savedEngine === '2d' || savedEngine === '3d') {
+    _qGeoMode = savedEngine;
+  } else if (/\\begin\{tikzpicture\}/i.test(code)) {
+    _qGeoMode = 'tikz';
+  } else if (/Sphere\(|f\(x,y\)|Surface\(|Cube\(|Cylinder\(/i.test(code)) {
+    _qGeoMode = '3d';
+  } else {
+    _qGeoMode = '2d';
+  }
+
+  const modal = document.getElementById('q-geo-modal');
+  document.getElementById('q-geo-title').textContent = `Q${q?.number||''} · 几何画板`;
+  document.getElementById('q-geo-code').value = code;
+  document.getElementById('q-geo-q-hint').textContent =
+    q?.content ? `· 已绑定题目：${q.content.slice(0,40)}${q.content.length>40?'…':''}` : '';
+  document.getElementById('q-geo-ai-prompt').value = '';
+  document.getElementById('q-geo-ai-status').style.display = 'none';
+  modal.classList.add('open');
+  _renderQGeoTabs();
+  setTimeout(_initQGeoBoard, 30);
+}
+
+function closeQGeoModal() {
+  document.getElementById('q-geo-modal').classList.remove('open');
+  _qGeoApp = null;
+  document.getElementById('q-geo-board').innerHTML = '';
+}
+
+// ════════════════════════════════════════════════════════════
+// 🏭 出题工厂（LangGraph Multi-Agent）
+// ════════════════════════════════════════════════════════════
+let _factoryCtx = { qid: null, abort: null, variants: [] };
+
+function openFactoryModal(qid) {
+  _factoryCtx = { qid, abort: null, variants: [] };
+  document.getElementById('factory-modal').classList.add('open');
+  document.getElementById('factory-log').innerHTML =
+    '<div style="color:#64748b">点击「🚀 开始生成」启动 Agent。本系统使用 LangGraph 编排 5 类 Agent：Planner → Generator(并行) → Solver → GeoDrawer → Critic（自洽校验，不通过自动重试）。</div>';
+  document.getElementById('factory-variants').innerHTML =
+    '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:60px 0;font-size:13px">尚未生成</div>';
+  document.getElementById('factory-accept-btn').disabled = true;
+  document.getElementById('factory-save-draft-btn').disabled = true;
+  document.getElementById('factory-clear-draft-btn').style.display = 'none';
+  document.getElementById('factory-graph-status').textContent = '';
+  document.getElementById('factory-start-btn').style.display = '';
+  document.getElementById('factory-stop-btn').style.display = 'none';
+  // 尝试加载该题的已存草稿
+  _loadFactoryDraft(qid);
+}
+
+async function _loadFactoryDraft(qid) {
+  try {
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/questions/${qid}/variant-drafts`);
+    if (!r.ok) return;
+    const data = await r.json();
+    const drafts = data.drafts || [];
+    if (drafts.length) {
+      _factoryCtx.variants = drafts;
+      _renderFactoryVariants(drafts);
+      const t = data.saved_at ? `（保存于 ${data.saved_at}）` : '';
+      _facLog(`📂 已加载草稿：${drafts.length} 道变式题 ${t}`, 'ok');
+      document.getElementById('factory-accept-btn').disabled = false;
+      document.getElementById('factory-save-draft-btn').disabled = false;
+      document.getElementById('factory-clear-draft-btn').style.display = '';
+    }
+  } catch(e) { /* 静默失败：草稿是可选功能 */ }
+}
+
+async function saveFactoryDraft() {
+  const variants = _factoryCtx.variants || [];
+  if (!variants.length) { showToast('没有可保存的内容', 'warn'); return; }
+  const btn = document.getElementById('factory-save-draft-btn');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ 保存中…';
+  try {
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/questions/${_factoryCtx.qid}/variant-drafts`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ variants }),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    showToast(`💾 已保存 ${variants.length} 道变式题草稿`);
+    document.getElementById('factory-clear-draft-btn').style.display = '';
+  } catch(e) {
+    showToast('保存失败: ' + (e.message||e), 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+async function clearFactoryDraft() {
+  if (!confirm('确定清空本题的变式题草稿吗？')) return;
+  try {
+    await fetch(`/api/academy/exams/${currentExam.id}/questions/${_factoryCtx.qid}/variant-drafts`, { method: 'DELETE' });
+    showToast('草稿已清空');
+    document.getElementById('factory-clear-draft-btn').style.display = 'none';
+  } catch(e) {
+    showToast('清空失败: ' + (e.message||e), 'error');
+  }
+}
+
+function closeFactoryModal() {
+  stopFactory();
+  document.getElementById('factory-modal').classList.remove('open');
+}
+
+function stopFactory() {
+  if (_factoryCtx.abort) {
+    try { _factoryCtx.abort.abort(); } catch(_) {}
+    _factoryCtx.abort = null;
+  }
+  document.getElementById('factory-start-btn').style.display = '';
+  document.getElementById('factory-stop-btn').style.display = 'none';
+}
+
+function _facLog(html, level='info') {
+  const colorMap = { info:'#cbd5e1', ok:'#34d399', warn:'#fbbf24', err:'#f87171', node:'#a78bfa' };
+  const div = document.createElement('div');
+  div.style.color = colorMap[level] || '#cbd5e1';
+  div.style.marginBottom = '4px';
+  div.innerHTML = html;
+  const log = document.getElementById('factory-log');
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function startFactory() {
+  const qid = _factoryCtx.qid;
+  if (!qid) return;
+  const n = parseInt(document.getElementById('factory-n').value || '3', 10);
+  document.getElementById('factory-log').innerHTML = '';
+  document.getElementById('factory-variants').innerHTML =
+    '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:60px 0;font-size:13px">⏳ Agent 正在工作…</div>';
+  document.getElementById('factory-accept-btn').disabled = true;
+  document.getElementById('factory-graph-status').textContent = 'running';
+  document.getElementById('factory-start-btn').style.display = 'none';
+  document.getElementById('factory-stop-btn').style.display = '';
+  _facLog(`🚀 启动出题工厂，规划生成 <b>${n}</b> 道变式题`, 'node');
+
+  const ac = new AbortController();
+  _factoryCtx.abort = ac;
+  try {
+    const resp = await fetch(`/api/academy/exams/${currentExam.id}/questions/${qid}/spawn-variants`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ n }),
+      signal: ac.signal,
+    });
+    if (!resp.ok || !resp.body) {
+      const t = await resp.text().catch(()=>String(resp.status));
+      throw new Error(t);
+    }
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder('utf-8');
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      // SSE: 以 "\n\n" 分隔事件
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const chunk = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        const line = chunk.split('\n').find(l => l.startsWith('data:'));
+        if (!line) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(5).trim()); } catch (_) { continue; }
+        _handleFactoryEvent(ev);
+      }
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') _facLog(`❌ 出错: ${escHtml(String(e.message||e))}`, 'err');
+  } finally {
+    document.getElementById('factory-start-btn').style.display = '';
+    document.getElementById('factory-stop-btn').style.display = 'none';
+    document.getElementById('factory-graph-status').textContent = 'idle';
+    _factoryCtx.abort = null;
+  }
+}
+
+function _handleFactoryEvent(ev) {
+  if (ev.type === 'progress') {
+    (ev.notes || []).forEach(n => {
+      const lvl = n.startsWith('❌') ? 'err'
+                : n.startsWith('⚠️') ? 'warn'
+                : n.startsWith('✅') || n.startsWith('  ✓') ? 'ok'
+                : (n.startsWith('📋')||n.startsWith('🛠')||n.startsWith('🧮')||n.startsWith('🎨')||n.startsWith('🔍')||n.startsWith('🔁')||n.startsWith('🎯')) ? 'node'
+                : 'info';
+      _facLog(escHtml(n), lvl);
+    });
+    if (ev.variants && ev.variants.length) _renderFactoryVariants(ev.variants);
+  } else if (ev.type === 'done') {
+    _facLog(`✅ <b>完成</b>，共 ${ev.variants?.length || 0} 道变式题`, 'ok');
+    _factoryCtx.variants = ev.variants || [];
+    _renderFactoryVariants(ev.variants || []);
+    document.getElementById('factory-accept-btn').disabled = !(ev.variants && ev.variants.length);
+    document.getElementById('factory-save-draft-btn').disabled = !(ev.variants && ev.variants.length);
+  } else if (ev.type === 'error') {
+    _facLog(`❌ ${escHtml(ev.message || '未知错误')}`, 'err');
+  }
+}
+
+function _fixLatex(s) {
+  if (typeof s !== 'string') return s || '';
+  // 0) JSON 控制字符还原：LLM 写 "\boldsymbol" "\text" "\frac" "\nabla" "\rho" 时
+  //    JSON 解析会把 \b \t \f \n \r 变成 BS/TAB/FF/LF/CR，这里把它们恢复成 \b \t \f \n \r
+  s = s.replace(/\u0008/g, '\\b').replace(/\u0009/g, '\\t').replace(/\u000c/g, '\\f');
+  s = s.replace(/\n(?=[A-Za-z]{2,}\b)/g, '\\n').replace(/\r(?=[A-Za-z]{2,}\b)/g, '\\r');
+  if (s.indexOf('\\') < 0) return s;
+  // 1) \\{ \\} \\| → \{ \} \|
+  s = s.replace(/\\\\([{}|,;:])/g, '\\$1');
+  // 2) \\cmd → \cmd（常见命令）
+  s = s.replace(/\\\\(?=(?:Big|big|Bigg|bigg|left|right|frac|sqrt|sum|int|prod|lim|infty|cdot|times|leq|geq|neq|in|notin|subset|supset|cup|cap|setminus|alpha|beta|gamma|delta|epsilon|theta|lambda|mu|pi|sigma|phi|omega|sin|cos|tan|log|ln|exp|max|min|mid|parallel|perp|rightarrow|leftarrow|to|mathbb|mathcal|mathrm|mathbf|text|overline|underline|hat|tilde|bar|vec|boldsymbol|nabla|partial|forall|exists|le|ge|ne|cdots|ldots)\b)/g, '\\');
+  // 3) \ext{ → \text{ ；\oldsymbol → \boldsymbol（保险）
+  s = s.replace(/\\ext\{/g, '\\text{');
+  s = s.replace(/\\oldsymbol\{/g, '\\boldsymbol{');
+  s = s.replace(/\\rac\{/g, '\\frac{');
+  // 4) 自动包 $...$：含 \cmd 的 ASCII 段
+  const reCmd = /(?:Big|big|Bigg|bigg|left|right|frac|sqrt|sum|int|prod|lim|infty|cdot|times|leq|geq|neq|in|notin|subset|supset|cup|cap|setminus|alpha|beta|gamma|delta|epsilon|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|phi|chi|psi|omega|sin|cos|tan|cot|sec|csc|log|ln|exp|max|min|mid|parallel|perp|angle|triangle|circ|rightarrow|leftarrow|to|mapsto|mathbb|mathcal|mathrm|mathbf|text|overline|underline|hat|tilde|bar|vec|le|ge|ne|cdots|ldots)/;
+  // 按 $...$ 已有公式切段
+  const parts = s.split(/(\$+[^\$]*\$+)/);
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i].startsWith('$')) continue;
+    // 按中文/标点切
+    const sub = parts[i].split(/([\u4e00-\u9fff]+|[。，、；！？：])/);
+    for (let j = 0; j < sub.length; j++) {
+      if (!sub[j] || /^[\u4e00-\u9fff。，、；！？：]/.test(sub[j])) continue;
+      // 用全局正则查找 \cmd
+      const reBare = new RegExp("([A-Za-z0-9_^{}\\\\\\s\\.,;:=+\\-*/<>|()\\[\\]!?'\"]*\\\\(?:" + reCmd.source + ")(?![A-Za-z])[A-Za-z0-9_^{}\\\\\\s\\.,;:=+\\-*/<>|()\\[\\]!?'\"]*)", "g");
+      sub[j] = sub[j].replace(reBare, (m, g1) => "$" + g1.trim() + "$");
+    }
+    parts[i] = sub.join('');
+  }
+  return parts.join('');
+}
+
+function _normalizeVariant(v) {
+  return Object.assign({}, v, {
+    content:  _fixLatex(v.content),
+    answer:   _fixLatex(v.answer),
+    solution: _fixLatex(v.solution),
+  });
+}
+
+function _renderFactoryVariants(variants) {
+  // 展示前先清洗一遍，兼容旧草稿
+  variants = (variants || []).map(_normalizeVariant);
+  _factoryCtx.variants = variants;
+  const grid = document.getElementById('factory-variants');
+  if (!variants.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:40px">无结果</div>'; return; }
+  grid.innerHTML = variants.map((v, i) => {
+    const c = v.critic || {};
+    const score = c.score ?? '?';
+    const ok = c.ok !== false;
+    const failed = v.status === 'failed_review';
+    const diffColor = { easy:'#10b981', medium:'#f59e0b', hard:'#ef4444' }[v.difficulty] || '#64748b';
+    const stratLabel = { numbers:'换数字', context:'换情境', figure:'换图形', extend:'加难度' }[v.strategy] || (v.strategy||'变式');
+    const issues = (c.issues||[]).length ? `<div style="background:#fef3c7;color:#92400e;font-size:11px;padding:6px 8px;border-radius:6px;margin-top:6px">⚠️ ${(c.issues||[]).map(escHtml).join('; ')}</div>` : '';
+    const borderColor = failed ? '#ef4444' : (ok ? '#e2e8f0' : '#fcd34d');
+    const statusBadge = failed
+      ? `<span style="font-size:11px;color:#ef4444;font-weight:600">❌ 已弃 · 修${v.fix_count||0}次仍未通过</span>`
+      : `<span style="font-size:11px;color:${ok?'#10b981':'#f59e0b'};font-weight:600">${ok?'✅':'⚠️'} ${score}/10${v.fix_count?` · 修${v.fix_count}次`:''}</span>`;
+    return `
+      <div data-vidx="${i}" style="background:#fff;border:1px solid ${borderColor};border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,.04);${failed?'opacity:.7':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;min-width:0">
+            <input type="checkbox" class="fac-pick" data-idx="${i}" ${ok && !failed?'checked':''}>
+            <span style="font-weight:600;color:#1e293b">变式 ${i+1}</span>
+            <span style="font-size:11px;background:#eef2ff;color:#6366f1;padding:2px 8px;border-radius:99px">${escHtml(stratLabel)}</span>
+            <span style="font-size:11px;background:${diffColor}22;color:${diffColor};padding:2px 8px;border-radius:99px">${escHtml(v.difficulty||'')}</span>
+          </label>
+          <button class="fac-edit-btn" data-idx="${i}" title="切换编辑模式" style="border:none;background:#fef3c7;color:#92400e;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">✏️ 编辑</button>
+          ${statusBadge}
+        </div>
+        <div style="font-size:13px;color:#64748b">📝 题目 <span class="fac-edit-hint" data-idx="${i}" style="display:none;color:#6366f1">（编辑中，失焦自动保存）</span></div>
+        <div class="fac-field fac-content" data-idx="${i}" data-field="content" data-raw="${escHtml(v.content||'')}" style="font-size:15px;line-height:1.75;color:#1e293b;background:#f8fafc;border-radius:8px;padding:10px 12px;max-height:200px;overflow-y:auto;outline:none" data-katex>${escHtml(v.content||'')}</div>
+        ${(v.options||[]).length ? `<div style="font-size:14px;color:#475569;line-height:1.8">${(v.options||[]).map(o=>escHtml(o)).join('<br>')}</div>` : ''}
+        <div style="font-size:13px;color:#64748b">✅ 答案</div>
+        <div class="fac-field fac-answer" data-idx="${i}" data-field="answer" data-raw="${escHtml(v.answer||'')}" style="font-size:15px;color:#065f46;background:#ecfdf5;padding:8px 12px;border-radius:6px;outline:none;min-height:30px;line-height:1.7" data-katex>${escHtml(v.answer||'(无)')}</div>
+        <details style="font-size:13px" open><summary style="cursor:pointer;color:#6366f1;font-size:13px;padding:4px 0">📖 查看/编辑解析</summary>
+          <div class="fac-field fac-solution" data-idx="${i}" data-field="solution" data-raw="${escHtml(v.solution||'')}" style="background:#fefce8;padding:10px 12px;border-radius:6px;margin-top:4px;max-height:280px;overflow-y:auto;line-height:1.75;outline:none;min-height:40px;font-size:14px;color:#1e293b" data-katex>${escHtml(v.solution||'')}</div>
+        </details>
+        ${v.viz_engine ? `<details style="font-size:12px"><summary style="cursor:pointer;color:#6366f1">🎨 ${v.viz_engine.toUpperCase()} 代码（自动生成）</summary>
+          <pre style="background:#0f172a;color:#a5f3fc;padding:8px;border-radius:6px;margin-top:4px;max-height:160px;overflow:auto;font-size:11px;white-space:pre-wrap">${escHtml(v.geogebra_code||'')}</pre>
+        </details>` : ''}
+        ${issues}
+      </div>`;
+  }).join('');
+  // 渲染 KaTeX
+  if (typeof renderMathIn === 'function') {
+    grid.querySelectorAll('[data-katex]').forEach(el => {
+      try { renderMathIn(el); } catch(_) {}
+    });
+  }
+  // 绑定"编辑"按钮：切换为"源码 + 实时预览"双栏富文本编辑模式
+  grid.querySelectorAll('.fac-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = btn.dataset.idx;
+      const card = grid.querySelector(`[data-vidx="${idx}"]`);
+      if (!card) return;
+      const fields = card.querySelectorAll('.fac-field');
+      const editing = btn.dataset.editing === '1';
+      if (!editing) {
+        // 进入编辑：每个字段替换为"<textarea>源码 + 预览框"双栏
+        fields.forEach(el => {
+          const fname = el.dataset.field;
+          const raw = (_factoryCtx.variants[idx] || {})[fname] || '';
+          const wrap = document.createElement('div');
+          wrap.className = 'fac-edit-wrap';
+          wrap.dataset.field = fname;
+          wrap.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:6px;border:1px dashed #f59e0b;border-radius:6px;padding:6px;background:#fffbeb';
+          const ta = document.createElement('textarea');
+          ta.value = raw;
+          ta.style.cssText = 'width:100%;min-height:90px;padding:6px 8px;font-family:Consolas,Menlo,monospace;font-size:13px;border:1px solid #fcd34d;border-radius:4px;background:#fff;resize:vertical;outline:none';
+          ta.placeholder = 'LaTeX 源码（用 $...$ 包公式）';
+          const prev = document.createElement('div');
+          prev.style.cssText = 'padding:6px 10px;background:#fff;border:1px solid #fcd34d;border-radius:4px;font-size:14px;line-height:1.7;overflow:auto;min-height:90px';
+          const renderPrev = () => {
+            prev.textContent = ta.value || '(空)';
+            if (typeof renderMathIn === 'function') { try { renderMathIn(prev); } catch(_){} }
+          };
+          let t = null;
+          ta.addEventListener('input', () => { clearTimeout(t); t = setTimeout(renderPrev, 200); });
+          renderPrev();
+          wrap.appendChild(ta);
+          wrap.appendChild(prev);
+          el.style.display = 'none';
+          el.parentNode.insertBefore(wrap, el.nextSibling);
+        });
+        card.querySelector('.fac-edit-hint').style.display = '';
+        btn.textContent = '💾 完成';
+        btn.dataset.editing = '1';
+      } else {
+        // 退出编辑：把 textarea 内容写回 _factoryCtx + 原 div 重新渲染
+        const v = _factoryCtx.variants[idx];
+        card.querySelectorAll('.fac-edit-wrap').forEach(wrap => {
+          const fname = wrap.dataset.field;
+          const ta = wrap.querySelector('textarea');
+          const newVal = ta ? ta.value : '';
+          const target = card.querySelector(`.fac-field[data-field="${fname}"]`);
+          if (v) v[fname] = newVal;
+          if (target) {
+            target.dataset.raw = newVal.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+            target.innerHTML = newVal.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+            target.style.display = '';
+            if (typeof renderMathIn === 'function') { try { renderMathIn(target); } catch(_){} }
+          }
+          wrap.remove();
+        });
+        card.querySelector('.fac-edit-hint').style.display = 'none';
+        btn.textContent = '✏️ 编辑';
+        btn.dataset.editing = '0';
+      }
+    });
+  });
+}
+
+async function acceptVariants() {
+  const picks = Array.from(document.querySelectorAll('#factory-variants .fac-pick'))
+    .map((cb, _) => ({ checked: cb.checked, idx: parseInt(cb.dataset.idx, 10) }))
+    .filter(p => p.checked)
+    .map(p => _factoryCtx.variants[p.idx])
+    .filter(Boolean);
+  if (!picks.length) { showToast('请至少选择一道', 'warn'); return; }
+  const btn = document.getElementById('factory-accept-btn');
+  btn.disabled = true; btn.textContent = '⏳ 入库中…';
+  try {
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/accept-variants`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ source_qid: _factoryCtx.qid, variants: picks }),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    showToast(`✅ 已入库 ${data.added} 道变式题`);
+    // 入库后顺手清掉草稿
+    try {
+      await fetch(`/api/academy/exams/${currentExam.id}/questions/${_factoryCtx.qid}/variant-drafts`, { method: 'DELETE' });
+    } catch(_) {}
+    closeFactoryModal();
+    // 刷新当前试卷
+    await selectExam(currentExam.id);
+  } catch (e) {
+    showToast('✗ 入库失败: ' + (e.message||e), 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '✅ 采纳选中并入库';
+  }
+}
+
+
+function switchQGeoMode(mode) {
+  if (_qGeoMode === mode) return;
+  _qGeoMode = mode;
+  _qGeoApp = null;
+  document.getElementById('q-geo-board').innerHTML =
+    '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8">⏳ 切换中…</div>';
+  _renderQGeoTabs();
+  setTimeout(_initQGeoBoard, 50);
+}
+
+function _renderQGeoTabs() {
+  const setCls = (id, on) => {
+    const el = document.getElementById(id);
+    if (el) el.className = 'btn btn-sm ' + (on ? 'btn-primary' : 'btn-ghost');
+  };
+  setCls('q-geo-tab-2d',   _qGeoMode==='2d');
+  setCls('q-geo-tab-3d',   _qGeoMode==='3d');
+  setCls('q-geo-tab-tikz', _qGeoMode==='tikz');
+
+  const promptEl = document.getElementById('q-geo-ai-prompt');
+  const labelEl  = document.getElementById('q-geo-code-label');
+  const codeEl   = document.getElementById('q-geo-code');
+  if (_qGeoMode === '2d') {
+    promptEl.placeholder = '例：作出题中圆与三角形，并标出关键交点';
+    labelEl.textContent  = 'GeoGebra 2D 命令（每行一条）';
+    codeEl.placeholder   = 'A=(0,0)\nB=(4,0)\nC=(2,3)\nPolygon(A,B,C)';
+  } else if (_qGeoMode === '3d') {
+    promptEl.placeholder = '例：绘制题中所述的球面与平面截痕';
+    labelEl.textContent  = 'GeoGebra 3D 命令（每行一条）';
+    codeEl.placeholder   = 'Sphere((0,0,0),1)\nf(x,y)=x^2+y^2';
+  } else {
+    promptEl.placeholder = '例：用 TikZ 绘制题中梯形并标注高';
+    labelEl.textContent  = 'TikZ 代码（直接编译）';
+    codeEl.placeholder   = '\\begin{tikzpicture}[scale=1]\n  \\draw[->] (-3,0)--(3,0) node[right]{$x$};\n  \\draw[->] (0,-3)--(0,3) node[above]{$y$};\n  \\draw (0,0) circle (2);\n\\end{tikzpicture}';
+  }
+}
+
+function _initQGeoBoard() {
+  const el = document.getElementById('q-geo-board');
+  if (!el) return;
+  el.innerHTML = '';
+
+  if (_qGeoMode === 'tikz') {
+    el.innerHTML =
+      '<div id="q-tikz-host" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#fff;overflow:auto;padding:14px">' +
+      '  <div style="color:#94a3b8;font-size:13px">点击「▶ 应用」或 AI 生成后将在此渲染 TikZ 图像</div>' +
+      '</div>';
+    // 若已有 TikZ 代码，自动渲染一次
+    const code = document.getElementById('q-geo-code')?.value.trim();
+    if (code && /\\begin\{tikzpicture\}/i.test(code)) _renderTikzInModal(code);
+    return;
+  }
+
+  const inject = () => {
+    new GGBApplet({
+      appName: _qGeoMode==='3d' ? '3d' : 'classic',
+      width: el.offsetWidth || 600, height: el.offsetHeight || 500,
+      showMenuBar:true, showToolBar:true, showAlgebraInput:true,
+      enableLabelDrags:true, enableShiftDragZoom:true, enableRightClick:true,
+      showResetIcon:true, allowStyleBar:true,
+      appletOnLoad(api){
+        _qGeoApp = api;
+        // 关掉 GeoGebra 原生的错误弹窗（否则任何 evalCommand 失败都会弹 native alert 卡住界面）
+        try { api.setErrorDialogsActive(false); } catch(_) {}
+        const code = document.getElementById('q-geo-code')?.value || '';
+        code.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'))
+            .forEach(c => { try { api.evalCommand(c); } catch(_) {} });
+      }
+    }, 'q-geo-board').inject('q-geo-board');
+  };
+  if (typeof GGBApplet === 'undefined') {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.geogebra.org/apps/deployggb.js';
+    s.onload = inject;
+    document.head.appendChild(s);
+  } else {
+    inject();
+  }
+}
+
+async function _renderTikzInModal(code) {
+  const host = document.getElementById('q-tikz-host');
+  if (!host) return;
+  host.innerHTML = '<div style="color:#6366f1;font-size:13px">⏳ 正在渲染 TikZ…</div>';
+  try {
+    const r = await fetch('/api/render-tikz', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({code})
+    });
+    const d = await r.json();
+    if (d.ok && d.url) {
+      host.innerHTML = `<img src="${d.url}" style="max-width:100%;max-height:100%;object-fit:contain" alt="TikZ">`;
+    } else {
+      host.innerHTML = `<div style="color:#ef4444;font-size:13px;padding:12px;white-space:pre-wrap">⚠️ ${escHtml(d.error||'渲染失败')}</div>`;
+    }
+  } catch(e) {
+    host.innerHTML = `<div style="color:#ef4444;font-size:13px">⚠️ ${escHtml(e.message)}</div>`;
+  }
+}
+
+function applyQGeoCode(opts) {
+  // opts.silent: 不弹 toast、不写 status（供严谨模式编排时用）
+  // 返回 { total, success, failedLines, successObjects } 供调用方判断
+  opts = opts || {};
+  const code = document.getElementById('q-geo-code').value || '';
+  if (_qGeoMode === 'tikz') {
+    if (!code.trim()) { if(!opts.silent) showToast('代码为空','warn'); return null; }
+    _renderTikzInModal(code);
+    return null;
+  }
+  if (!_qGeoApp) { if(!opts.silent) showToast('画板加载中…','warn'); return null; }
+  // 双保险：每次应用前再次确保 native error dialog 是关闭的
+  try { _qGeoApp.setErrorDialogsActive(false); } catch(_) {}
+  _qGeoApp.newConstruction();
+  // 剥离行内注释（# 后面的内容），再去空行；# 开头的整行注释也跳过
+  const stripInlineComment = (l) => {
+    // 简单实现：找第一个不在引号内的 #
+    let inQ = false;
+    for (let i=0;i<l.length;i++){
+      const ch = l[i];
+      if (ch === '"') inQ = !inQ;
+      else if (ch === '#' && !inQ) return l.slice(0,i).trim();
+    }
+    return l.trim();
+  };
+  const lines = code.split('\n').map(stripInlineComment).filter(l => l && !l.startsWith('#'));
+  const failed = [];
+  // 自动修正：把 GeoGebra 不支持的隐式乘法补上 *（仅处理 数字+字母 的最常见情况，
+  // 不动 ),x 和 x( 形式，否则会破坏函数调用与参数列表）
+  const fixImplicitMul = (s) => s
+    .replace(/√/g, 'sqrt')                              // √ → sqrt（防止 √(p/2) 这种 Unicode 写法）
+    .replace(/(\d)([a-zA-Z\u03b1-\u03c9])/g, '$1*$2');   // 2p → 2*p, 3x → 3*x
+  // 自动修正：常见的"伪 GeoGebra 签名"重写
+  const fixFakeSignatures = (s) => {
+    // 形如  name = LHS = RHS  → name = ImplicitCurve(LHS - (RHS))
+    let m = s.match(/^([A-Za-z_]\w*)\s*=\s*([^=]+?)\s*=\s*(.+?)\s*$/);
+    if (m && /[xy]/.test(m[2] + m[3])) {
+      return `${m[1]}=ImplicitCurve((${m[2]}) - (${m[3]}))`;
+    }
+    // Parabola((vx,vy), Vector(ax,ay), p) → 用 Curve 画 y²=2px 形式（仅当顶点是原点+水平轴）
+    m = s.match(/^([A-Za-z_]\w*)\s*=\s*Parabola\(\s*\(\s*0\s*,\s*0\s*\)\s*,\s*Vector\(\s*1\s*,\s*0\s*\)\s*,\s*([^)]+?)\s*\)\s*$/);
+    if (m) return `${m[1]}=Curve(t^2/(2*${m[2]}), t, t, -8, 8)`;
+    // Parabola(顶点, Vector, p) 其它任意情况 → 退化为 ImplicitCurve y²=2px（不带平移，至少能画出来）
+    m = s.match(/^([A-Za-z_]\w*)\s*=\s*Parabola\(\s*\([^)]+\)\s*,\s*Vector\([^)]+\)\s*,\s*([^)]+?)\s*\)\s*$/);
+    if (m) return `${m[1]}=ImplicitCurve(y^2 - 2*(${m[2]})*x)`;
+    return s;
+  };
+  lines.forEach(c => {
+    let ok = false;
+    const fixed = fixFakeSignatures(fixImplicitMul(c));
+    try { ok = _qGeoApp.evalCommand(fixed); } catch(_) { ok = false; }
+    if (!ok) failed.push({orig:c, fixed});
+  });
+  // 多轮重试：处理 LLM 把命令顺序写乱（B 引用 A 但 B 在前）的情况
+  // 每轮只要还有命令成功，就再来一轮，直到一轮内无进展
+  for (let round = 0; round < 4 && failed.length > 0; round++) {
+    const stillFailed = [];
+    for (const item of failed) {
+      let ok = false;
+      try { ok = _qGeoApp.evalCommand(item.fixed); } catch(_) { ok = false; }
+      if (!ok) stillFailed.push(item);
+    }
+    if (stillFailed.length === failed.length) break;  // 无进展，退出
+    failed.length = 0;
+    failed.push(...stillFailed);
+  }
+  // 最后一轮兜底：失败的 Intersect(X, Y, n) 改写为 Element(Intersect(X,Y), n)
+  // 适配参数 Curve 与 Line 的交点取第 n 个的场景
+  if (failed.length > 0) {
+    const stillFailed = [];
+    for (const item of failed) {
+      let alt = item.fixed.replace(
+        /^([A-Za-z_]\w*)\s*=\s*Intersect\(([^,]+?),\s*([^,]+?),\s*(\d+)\s*\)\s*$/,
+        '$1=Element(Intersect($2,$3), $4)'
+      );
+      if (alt === item.fixed) { stillFailed.push(item); continue; }
+      let ok = false;
+      try { ok = _qGeoApp.evalCommand(alt); } catch(_) { ok = false; }
+      if (!ok) stillFailed.push(item);
+    }
+    failed.length = 0;
+    failed.push(...stillFailed);
+  }
+  const failedLines = failed.map(f => f.orig);
+  let successObjects = [];
+  try { successObjects = _qGeoApp.getAllObjectNames() || []; } catch(_) {}
+  const status = document.getElementById('q-geo-ai-status');
+  if (failed.length === 0) {
+    if (!opts.silent) {
+      if (status) { status.style.display='block'; status.style.color='#059669';
+        status.textContent = `✅ 已应用 ${lines.length} 条命令`; }
+      showToast('已应用');
+    }
+  } else {
+    if (!opts.silent) {
+      if (status) { status.style.display='block'; status.style.color='#ef4444';
+        status.innerHTML = `⚠️ ${lines.length-failed.length}/${lines.length} 条已应用，${failed.length} 条失败：` +
+          `<div style="max-height:240px;overflow:auto;margin-top:4px;padding:6px;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;font-family:Consolas,monospace;font-size:11px;line-height:1.5">` +
+          failedLines.map(c=>`<div>${escHtml(c)}</div>`).join('') +
+          `</div>` +
+          '<div style="color:#64748b;margin-top:4px">请直接在代码框里改正后再点「▶ 应用」，或点「🔄 重置画板」重建。</div>'; }
+      showToast(`${failed.length} 条命令失败，详情见状态栏`,'warn');
+    }
+  }
+  return { total: lines.length, success: lines.length - failed.length, failedLines, successObjects };
+}
+
+function resetQGeoBoard() {
+  // 销毁并重建画板，应付 applet 状态错乱 / 报错弹窗后卡住的极端情况
+  _qGeoApp = null;
+  const el = document.getElementById('q-geo-board');
+  if (el) el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#6366f1;font-size:13px">⏳ 重建画板中…</div>';
+  setTimeout(_initQGeoBoard, 80);
+  const status = document.getElementById('q-geo-ai-status');
+  if (status) { status.style.display='block'; status.style.color='#0ea5e9';
+    status.textContent = '🔄 画板已重建，可以重新点「▶ 应用」或「✨ AI 一键生成」'; }
+  showToast('画板已重建');
+}
+
+function clearQGeoBoard() {
+  if (_qGeoApp) {
+    try { _qGeoApp.setErrorDialogsActive(false); } catch(_) {}
+    _qGeoApp.newConstruction();
+  }
+  document.getElementById('q-geo-code').value = '';
+  if (_qGeoMode === 'tikz') {
+    const host = document.getElementById('q-tikz-host');
+    if (host) host.innerHTML = '<div style="color:#94a3b8;font-size:13px">已清空</div>';
+  }
+}
+
+async function aiGenerateQGeo() {
+  if (!_qGeoCtx) return;
+  const prompt = (document.getElementById('q-geo-ai-prompt')?.value || '').trim();
+  const useQ = document.getElementById('q-geo-use-question')?.checked;
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(_qGeoCtx.qid));
+
+  // 校验：必须至少有题目内容或自定义 prompt
+  if (!prompt && !(useQ && q?.content)) {
+    showToast('请勾选「使用题目内容」或在补充指令里填写描述','warn');
+    return;
+  }
+
+  const btn = document.getElementById('q-geo-ai-btn');
+  const origBtn = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ AI 正在生成…'; btn.style.opacity = '.7'; }
+  const status = document.getElementById('q-geo-ai-status');
+  status.style.display='block';
+  status.style.color = '#6366f1';
+  status.textContent = '⏳ AI 正在结合题目生成…';
+
+  // 默认 prompt：当用户没填时，根据当前模式给出合适的默认指令
+  const defaultByMode = {
+    '2d':   '请根据题目内容自动作出最贴合的二维几何图形，标注关键点、线、角度等要素',
+    '3d':   '请根据题目内容自动作出最贴合的三维几何图形（球、面、体等），标注关键点和截面',
+    'tikz': '请根据题目内容自动绘制贴合的 TikZ 图，包含坐标轴和关键标注',
+  };
+  const finalPrompt = prompt || defaultByMode[_qGeoMode] || '请根据题目内容自动作出最贴合的图形';
+
+  const board_type = _qGeoMode === 'tikz' ? 'tikz'
+                   : _qGeoMode === '3d'   ? 'desmos3d'
+                   : 'geogebra';
+
+  try {
+    const r = await fetch('/api/academy/draw-ai',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        board_type,
+        prompt: finalPrompt,
+        context: document.getElementById('q-geo-code').value || '',
+        question_content: useQ ? (q?.content || '') : '',
+        question_answer:  useQ ? (q?.answer  || '') : '',
+      })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error||'生成失败');
+    document.getElementById('q-geo-code').value = d.commands || '';
+    status.style.color = '#059669';
+    status.innerHTML = `✅ 已生成并自动应用 <span class="text-slate-400">${escHtml((d.explanation||'').slice(0,180))}</span>`;
+    applyQGeoCode();
+  } catch(e) {
+    status.style.color = '#ef4444';
+    status.textContent = '❌ '+e.message;
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = origBtn; btn.style.opacity = '1'; }
+  }
+}
+
+// ─── 严谨模式（4 阶段多 Agent）───────────────────────────────
+// 阶段 1 Planner（后端 LLM #1）：题目→结构化绘图计划 JSON
+// 阶段 2 Coder  （后端 LLM #2）：计划→GeoGebra 代码
+// 阶段 3 Executor（前端 evalCommand + 5 道 Pass + 多轮重试）
+// 阶段 4 Healer（后端 LLM #3，最多 2 轮）：失败行 + 已成功对象 → 局部修补
+async function aiGenerateQGeoStrict() {
+  if (!_qGeoCtx) return;
+  if (_qGeoMode === 'tikz' || _qGeoMode === '3d') {
+    showToast('严谨模式目前仅支持 2D GeoGebra','warn'); return;
+  }
+  const prompt = (document.getElementById('q-geo-ai-prompt')?.value || '').trim();
+  const useQ = document.getElementById('q-geo-use-question')?.checked;
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(_qGeoCtx.qid));
+  if (!prompt && !(useQ && q?.content)) {
+    showToast('请勾选「使用题目内容」或在补充指令里填写描述','warn'); return;
+  }
+
+  const btn = document.getElementById('q-geo-ai-strict-btn');
+  const origBtn = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ 正在编排…'; btn.style.opacity = '.7'; }
+  const status = document.getElementById('q-geo-ai-status');
+  const setStatus = (color, html) => {
+    if (!status) return;
+    status.style.display = 'block';
+    status.style.color = color;
+    status.innerHTML = html;
+  };
+
+  const finalPrompt = prompt || '请根据题目内容自动作出最贴合的二维几何图形';
+
+  try {
+    // ── 阶段 1+2 ──
+    setStatus('#0d9488', '📝 阶段 1/2: 规划+生成代码…');
+    const r1 = await fetch('/api/academy/draw-multi/plan-and-code', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        prompt: finalPrompt,
+        question_content: useQ ? (q?.content || '') : '',
+        question_answer:  useQ ? (q?.answer  || '') : '',
+      })
+    });
+    const d1 = await r1.json();
+    if (!d1.ok) throw new Error(`[阶段${d1.stage||'1-2'}] ${d1.error||'失败'}`);
+    const plan = d1.plan;
+    let code = d1.code || '';
+    document.getElementById('q-geo-code').value = code;
+
+    // ── 阶段 3: 执行 ──
+    setStatus('#0d9488', '▶ 阶段 3: 在画板上执行…');
+    let result = applyQGeoCode({silent: true});
+    if (!result) throw new Error('画板未就绪');
+
+    // ── 阶段 4: Healer 循环（最多 2 轮）──
+    const MAX_HEAL = 2;
+    const healLog = [];
+    for (let attempt = 1; attempt <= MAX_HEAL && result.failedLines.length > 0; attempt++) {
+      setStatus('#d97706',
+        `🔧 阶段 4: Healer 修复中 (${attempt}/${MAX_HEAL})… 还有 ${result.failedLines.length} 条失败`);
+      const rh = await fetch('/api/academy/draw-multi/heal', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          plan, code,
+          failed_lines:    result.failedLines,
+          success_objects: result.successObjects,
+          attempt,
+        })
+      });
+      const dh = await rh.json();
+      if (!dh.ok) { healLog.push(`第${attempt}轮失败: ${dh.error}`); break; }
+      code = dh.code || code;
+      document.getElementById('q-geo-code').value = code;
+      healLog.push(`第${attempt}轮: ${dh.explanation || '已修补'}`);
+      // 重新执行
+      result = applyQGeoCode({silent: true});
+      if (!result) break;
+    }
+
+    // ── 收尾 ──
+    if (result.failedLines.length === 0) {
+      const trace = healLog.length
+        ? `<div style="color:#64748b;margin-top:4px;font-size:11px">🛡️ 修复轨迹：${escHtml(healLog.join(' → '))}</div>`
+        : '';
+      setStatus('#059669',
+        `✅ 严谨模式成功：${result.success}/${result.total} 条命令全部应用` +
+        (d1.explanation ? ` <span class="text-slate-400">${escHtml((d1.explanation||'').slice(0,160))}</span>` : '') +
+        trace);
+      showToast('🛡️ 严谨生成完成');
+    } else {
+      const failedHtml = result.failedLines.map(c=>`<div>${escHtml(c)}</div>`).join('');
+      const trace = healLog.length
+        ? `<div style="color:#64748b;margin-top:4px;font-size:11px">🛡️ 修复轨迹：${escHtml(healLog.join(' → '))}</div>`
+        : '';
+      setStatus('#ef4444',
+        `⚠️ 严谨模式：${result.success}/${result.total} 已应用，仍有 ${result.failedLines.length} 条失败（已尝试 ${healLog.length} 轮修复）：` +
+        `<div style="max-height:240px;overflow:auto;margin-top:4px;padding:6px;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;font-family:Consolas,monospace;font-size:11px;line-height:1.5">${failedHtml}</div>` +
+        trace +
+        '<div style="color:#64748b;margin-top:4px">可直接修改代码框后再点「▶ 应用」，或重置画板重试。</div>');
+      showToast(`仍剩 ${result.failedLines.length} 条失败`,'warn');
+    }
+  } catch(e) {
+    setStatus('#ef4444', '❌ '+escHtml(e.message));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = origBtn; btn.style.opacity = '1'; }
+  }
+}
+
+// 把教师在 GeoGebra 画板上手动绘制的图形同步到下方代码框
+function syncQGeoFromBoard() {
+  if (_qGeoMode === 'tikz') {
+    showToast('TikZ 模式不支持画板同步','warn'); return;
+  }
+  if (!_qGeoApp) { showToast('画板尚未加载','warn'); return; }
+  try {
+    const names = _qGeoApp.getAllObjectNames() || [];
+    if (!names.length) { showToast('画板上没有对象','warn'); return; }
+    const lines = [];
+    names.forEach(n => {
+      let cmd = '';
+      try { cmd = _qGeoApp.getCommandString(n) || ''; } catch(_){}
+      if (!cmd) {
+        try { cmd = _qGeoApp.getValueString(n) || ''; } catch(_){}
+      }
+      if (cmd) {
+        // GeoGebra 返回如 "Polygon(A, B, C)"，统一前缀变量名
+        if (!/^[A-Za-z_]\w*\s*[=:]/.test(cmd) && !cmd.includes('=')) {
+          lines.push(`${n}=${cmd}`);
+        } else {
+          lines.push(cmd);
+        }
+      }
+    });
+    if (!lines.length) { showToast('无法读取命令','warn'); return; }
+    document.getElementById('q-geo-code').value = lines.join('\n');
+    showToast(`✅ 已同步 ${lines.length} 条命令到代码框`);
+  } catch(e) {
+    showToast('同步失败：'+(e.message||e),'error');
+  }
+}
+
+// 把当前题目 + 几何代码作为新条目入库到标注系统（triplets）
+async function saveQGeoToDataset() {
+  if (!_qGeoCtx) return;
+  const code = (document.getElementById('q-geo-code').value || '').trim();
+  if (!code) { showToast('代码为空，无法入库','warn'); return; }
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(_qGeoCtx.qid));
+  if (!q) { showToast('找不到题目','error'); return; }
+
+  // 类别映射（academy → annotator 数据集类别）
+  const catMap = {
+    function:'function', derivative:'derivative', solid_geometry:'solid_geometry',
+    conic_curve:'conic_curve', trigonometric:'trigonometric', vector:'vector',
+    inequality:'inequality', sequence:'sequence', probability:'probability',
+    complex_number:'complex_number', triangle_solution:'triangle_solution',
+    set_logic:'set_logic',
+  };
+  const category = catMap[q.category] || 'function';
+
+  if (!confirm(`确认将 Q${q.number || ''} 的题目和当前 ${_qGeoMode.toUpperCase()} 代码入库到标注系统数据集？\n\n类别：${category}\n\n📌 入库的是【右侧代码框】里的源代码（${code.length} 字符），不是画板渲染出的图形。学生端会用同一份代码重新渲染，所以请保证代码本身是干净、可重放的。`)) return;
+
+  try {
+    // 1. 创建 triplet
+    const r1 = await fetch('/api/triplets', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        category,
+        question_text: q.content || '',
+        question_latex: q.content || '',
+        annotator: currentUser?.name || currentUser?.username || 'academy',
+      })
+    });
+    if (r1.status !== 201) throw new Error(await r1.text());
+    const { triplet } = await r1.json();
+    // 2. 追加代码段
+    const engineMap = { '2d':'geogebra', '3d':'geogebra', 'tikz':'tikz' };
+    const dim = _qGeoMode === '3d' ? '3d' : '2d';
+    const r2 = await fetch(`/api/triplets/${triplet.id}/codes`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        engine: engineMap[_qGeoMode] || 'geogebra',
+        dim,
+        code,
+        description: `来源：教师端学院 · Q${q.number||''}（试卷 ${currentExam?.title||currentExam?.id||''}）`,
+      })
+    });
+    if (!r2.ok) throw new Error(await r2.text());
+    showToast(`✅ 已入库标注系统（ID：${triplet.id}）`);
+    document.getElementById('q-geo-saved-hint').textContent = `📦 已入库：${triplet.id} · ${new Date().toLocaleTimeString()}`;
+  } catch(e) {
+    showToast('入库失败：'+(e.message||e),'error');
+  }
+}
+
+async function saveQGeoToQuestion() {
+  if (!_qGeoCtx) return;
+  const { qid } = _qGeoCtx;
+  const code = document.getElementById('q-geo-code').value || '';
+  if (!code.trim()) { showToast('代码为空','warn'); return; }
+  const r = await fetch(`/api/academy/exams/${currentExam.id}/questions/${qid}`,{
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ geogebra_code: code, viz_engine: _qGeoMode })
+  });
+  if (r.ok) {
+    const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(qid));
+    if (q) { q.geogebra_code = code; q.viz_engine = _qGeoMode; }
+    document.getElementById('q-geo-saved-hint').textContent = '✅ 已保存到本题（' + new Date().toLocaleTimeString() + '）';
+    showToast('✅ 已保存到本题');
+    if (q) renderQuestionDetail(q);
+  } else {
+    showToast('保存失败','error');
+  }
+}
+
+// ── 上传区拖拽支持 ──
+function _initUploadDropZone(qid) {
+  const zone = document.getElementById(`upload-zone-${qid}`);
+  const input = document.getElementById(`res-input-${qid}`);
+  if (!zone || !input) return;
+  ['dragover','dragenter'].forEach(ev => zone.addEventListener(ev, e => {
+    e.preventDefault(); zone.style.borderColor = '#6366f1'; zone.style.background = '#eef2ff';
+  }));
+  ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e => {
+    e.preventDefault(); zone.style.borderColor = ''; zone.style.background = '';
+  }));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) {
+      // 通过模拟 input.files 走原上传逻辑
+      const dt = new DataTransfer();
+      files.forEach(f => dt.items.add(f));
+      input.files = dt.files;
+      input.dispatchEvent(new Event('change'));
+    }
+  });
+}
+
+// ── LaTeX 工具栏（快速插入常用符号）──
+function _latexToolbar(targetId) {
+  const items = [
+    {l:'$x^2$',i:'^{}',c:'幂'},
+    {l:'$x_n$',i:'_{}',c:'下标'},
+    {l:'$\\frac{a}{b}$',i:'\\frac{}{}',c:'分数'},
+    {l:'$\\sqrt{x}$',i:'\\sqrt{}',c:'根号'},
+    {l:'$\\int$',i:'\\int_{}^{}',c:'积分'},
+    {l:'$\\sum$',i:'\\sum_{}^{}',c:'求和'},
+    {l:'$\\lim$',i:'\\lim_{}',c:'极限'},
+    {l:'$\\alpha$',i:'\\alpha',c:'希腊'},
+    {l:'$\\leq$',i:'\\leq',c:'≤'},
+    {l:'$\\geq$',i:'\\geq',c:'≥'},
+    {l:'$\\neq$',i:'\\neq',c:'≠'},
+    {l:'$\\infty$',i:'\\infty',c:'无穷'},
+  ];
+  const buttons = items.map(it =>
+    `<button type="button" title="${it.c}" onclick="insertAtCursor('${targetId}','${it.i.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${it.l}</button>`
+  ).join('');
+  return `<div class="toolbar-row">
+    <button type="button" title="行内公式" onclick="wrapAtCursor('${targetId}','$','$')">$ 行内 $</button>
+    <button type="button" title="行间公式" onclick="wrapAtCursor('${targetId}','$$','$$')">$$ 块 $$</button>
+    <span class="sep"></span>
+    ${buttons}
+  </div>`;
+}
+
+function insertAtCursor(targetId, text) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const start = el.selectionStart, end = el.selectionEnd;
+  el.value = el.value.slice(0,start) + text + el.value.slice(end);
+  el.focus();
+  el.selectionStart = el.selectionEnd = start + text.length;
+  el.dispatchEvent(new Event('input'));
+}
+
+function wrapAtCursor(targetId, before, after) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const s = el.selectionStart, e = el.selectionEnd;
+  const sel = el.value.slice(s,e);
+  el.value = el.value.slice(0,s) + before + sel + after + el.value.slice(e);
+  el.focus();
+  if (sel) { el.selectionStart = s + before.length; el.selectionEnd = e + before.length; }
+  else { el.selectionStart = el.selectionEnd = s + before.length; }
+  el.dispatchEvent(new Event('input'));
+}
+
+// ── 自定义类别 ──
+function addCustomCategory(qid) {
+  const name = prompt('请输入新的类别名称：');
+  if (!name || !name.trim()) return;
+  const sel = document.getElementById(`cat-${qid}`);
+  if (!sel) return;
+  // 检查是否已存在
+  for (const opt of sel.options) {
+    if (opt.value === name.trim()) { sel.value = name.trim(); return; }
+  }
+  const opt = document.createElement('option');
+  opt.value = name.trim();
+  opt.textContent = name.trim() + '（自定义）';
+  opt.selected = true;
+  sel.insertBefore(opt, sel.firstChild);
+  sel.value = name.trim();
+}
+
+// ── 上传解析文件 ──
+async function uploadSolutionFile(input, qid, eid) {
+  const f = input.files[0];
+  if (!f) return;
+  showToast('解析中…', 'info');
+  try {
+    const fd = new FormData();
+    fd.append('file', f);
+    // 复用通用解析端点（若没有则降级为读取本地文本）
+    let text = '';
+    if (/\.(txt|md)$/i.test(f.name)) {
+      text = await f.text();
+    } else {
+      // 尝试调用后端通用文件抽取（若无端点，回退到 OCR/parse-exam 不合适，提示手动）
+      try {
+        const r = await fetch('/api/academy/extract-text', { method:'POST', body: fd });
+        if (r.ok) {
+          const data = await r.json();
+          text = data.text || data.content || '';
+        }
+      } catch(_) {}
+      if (!text) {
+        // 退化：直接放入文件名
+        text = `[已上传文件：${f.name}，请手动整理解析内容]`;
+      }
+    }
+    const ta = document.getElementById(`solution-${qid}`);
+    if (ta) {
+      ta.value = (ta.value ? ta.value + '\n\n' : '') + text;
+      ta.dispatchEvent(new Event('input'));
+    }
+    showToast('解析文件已导入');
+  } catch(e) {
+    showToast('上传失败：'+e.message, 'error');
+  } finally {
+    input.value = '';
+  }
+}
+
+// ── KaTeX 渲染工具 ──
+function renderMathIn(rootEl) {
+  if (!rootEl) return;
+  const fn = () => {
+    if (typeof renderMathInElement === 'function') {
+      try {
+        renderMathInElement(rootEl, {
+          delimiters: [
+            {left:'$$',right:'$$',display:true},
+            {left:'$',right:'$',display:false},
+            {left:'\\(',right:'\\)',display:false},
+            {left:'\\[',right:'\\]',display:true},
+          ],
+          throwOnError:false,
+          errorColor:'#cc0000',
+        });
+      } catch(e) {}
+    }
+  };
+  if (window.__katexReady) fn();
+  else document.addEventListener('katex-ready', fn, {once:true});
+}
+
+let _previewTimer = null;
+function schedulePreview(qid, field) {
+  clearTimeout(_previewTimer);
+  _previewTimer = setTimeout(() => refreshDetailPreview(qid), 350);
+}
+
+function refreshDetailPreview(qid) {
+  const map = {content:{dst:'content',ph:'在上方输入题目，预览将出现在此'},
+               answer:{dst:'ans',ph:'答案预览'},
+               solution:{dst:'sol',ph:'解析预览'}};
+  for (const [src, info] of Object.entries(map)) {
+    const ta = document.getElementById(`${src}-${qid}`);
+    const box = document.getElementById(`preview-${info.dst}-${qid}`);
+    if (ta && box) {
+      const v = ta.value || '';
+      box.textContent = v || info.ph;
+      box.classList.toggle('empty', !v);
+      // 仅渲染该预览块的 KaTeX，性能更好
+      renderMathIn(box);
+    }
+  }
+}
+
+
+// ════════════════════════════════════
+//  保存题目
+// ════════════════════════════════════
+async function saveQuestion(qid, eid) {
+  const content  = document.getElementById(`content-${qid}`)?.value || '';
+  const answer   = document.getElementById(`answer-${qid}`)?.value  || '';
+  const solution = document.getElementById(`solution-${qid}`)?.value || '';
+  const category = document.getElementById(`cat-${qid}`)?.value      || 'other';
+  const r = await fetch(`/api/academy/exams/${eid}/questions/${qid}`,{
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({content,answer,solution,category})
+  });
+  if(r.ok){
+    showToast('已保存');
+    // 更新内存中的题目
+    const q = (currentExam.questions||[]).find(x=>String(x.id||x.number)===qid);
+    if(q){q.content=content;q.answer=answer;q.solution=solution;q.category=category;}
+  }
+}
+
+// ════════════════════════════════════
+//  资源上传 / 列表
+// ════════════════════════════════════
+async function loadResources(qid) {
+  const el = document.getElementById(`res-list-${qid}`);
+  if(!el) return;
+  try {
+    const r = await fetch(`/api/academy/questions/${qid}/resources`);
+    const list = await r.json();
+    if(!list.length){el.innerHTML='<span class="text-xs text-slate-400">暂无附件</span>';return;}
+    el.innerHTML = list.map(res => {
+      const url = res.url || `/api/academy/resources/${res.id}/file`;
+      const t = res.resource_type;
+      let preview = '';
+      if (t === 'image') preview = `<img src="${url}" style="max-width:120px;max-height:80px;border-radius:6px;border:1px solid #e2e8f0">`;
+      else if (t === 'video') preview = `<video src="${url}" controls style="max-width:160px;max-height:100px;border-radius:6px"></video>`;
+      else if (t === 'audio') preview = `<audio src="${url}" controls style="max-width:200px;height:32px"></audio>`;
+      return `
+        <div class="res-tile" style="flex-direction:column;align-items:flex-start;gap:6px;max-width:240px">
+          ${preview}
+          <div class="flex items-center gap-2 w-full">
+            <span>${resIcon(t)}</span>
+            <span class="flex-1 truncate text-xs" title="${escHtml(res.original_name)}">${escHtml(res.original_name)}</span>
+            <span class="x" onclick="deleteResource('${res.id}','${qid}')" title="删除">×</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch(e){ el.innerHTML='<span class="text-xs text-red-400">加载失败</span>'; }
+}
+
+function resIcon(t){ return {video:'🎬',audio:'🔊',image:'🖼️',model_3d:'🧊',pdf:'📄'}[t]||'📎'; }
+
+async function uploadResources(input, qid, eid) {
+  const files = Array.from(input.files);
+  for(const f of files){
+    const fd = new FormData();
+    fd.append('file', f); fd.append('exam_id', eid);
+    await fetch(`/api/academy/questions/${qid}/resources`,{method:'POST',body:fd});
+  }
+  loadResources(qid);
+  input.value='';
+}
+
+async function deleteResource(rid, qid) {
+  if(!confirm('确认删除该附件？')) return;
+  await fetch(`/api/academy/questions/${qid}/resources/${rid}`,{method:'DELETE'});
+  loadResources(qid);
+}
+
+// ════════════════════════════════════
+//  GeoGebra 编辑器
+// ════════════════════════════════════
+function openGgbEditor(qid, eid) {
+  editingVizQid = qid;
+  editingVizId = null;
+  const q = findQ(qid);
+  document.getElementById('ggb-code-input').value = q?.geogebra_code || '';
+  document.getElementById('ggb-modal').classList.add('open');
+  renderStepChips([]);
+  if(document.getElementById('ggb-container').children.length === 0) initGgbApp();
+}
+
+function closeGgbModal() {
+  document.getElementById('ggb-modal').classList.remove('open');
+}
+
+function initGgbApp() {
+  if(typeof GGBApplet === 'undefined'){
+    const s=document.createElement('script');
+    s.src='https://cdn.geogebra.org/apps/deployggb.js';
+    s.onload=()=>_doInitGgb();
+    document.head.appendChild(s);
+  } else { _doInitGgb(); }
+}
+
+function _doInitGgb() {
+  const params = {
+    appName:'classic', width:440, height:460,
+    showMenuBar:true, showToolBar:true, showAlgebraInput:true,
+    enableLabelDrags:false, enableShiftDragZoom:true, enableRightClick:false,
+    showResetIcon:true, useBrowserForJS:false, allowStyleBar:true,
+    appletOnLoad(api){ ggbApp = api; }
+  };
+  new GGBApplet(params, 'ggb-container').inject('ggb-container');
+}
+
+function applyGgbCode() {
+  const code = document.getElementById('ggb-code-input').value;
+  if(!ggbApp){showToast('GeoGebra 正在加载…','warn');return;}
+  ggbApp.newConstruction();
+  const lines = code.split('\n').filter(l=>l.trim()&&!l.trim().startsWith('#'));
+  for(const cmd of lines){
+    try{ ggbApp.evalCommand(cmd); }catch(e){}
+  }
+  const snaps = parseSnaps(code);
+  renderStepChips(snaps);
+}
+
+function renderStepChips(snaps) {
+  const el = document.getElementById('step-chips');
+  if(!snaps.length){el.innerHTML='<span class="text-xs text-slate-400">无步骤注释</span>';return;}
+  el.innerHTML = snaps.map((s,i)=>`
+    <span class="step-chip ${i===0?'active':''}" onclick="playStep(${i})">${s.step}. ${s.description}</span>
+  `).join('');
+}
+
+function playStep(idx) {
+  const code = document.getElementById('ggb-code-input').value;
+  const snaps = parseSnaps(code);
+  if(!ggbApp||idx>=snaps.length) return;
+  ggbApp.newConstruction();
+  for(let i=0;i<=idx;i++){
+    for(const cmd of snaps[i].commands){
+      try{ggbApp.evalCommand(cmd);}catch(e){}
+    }
+  }
+  document.querySelectorAll('.step-chip').forEach((c,i)=>c.classList.toggle('active',i===idx));
+}
+
+function parseSnaps(code) {
+  const snaps=[];
+  let cur={step:0,description:'',commands:[]};
+  for(const line of code.split('\n')){
+    const m=line.match(/^#\s*步骤\s*(\d+)[：:]?\s*(.*)/);
+    if(m){
+      if(cur.commands.length) snaps.push(cur);
+      cur={step:+m[1],description:m[2].trim(),commands:[]};
+    } else if(!line.trim().startsWith('#')&&line.trim()){
+      cur.commands.push(line.trim());
+    }
+  }
+  if(cur.commands.length) snaps.push(cur);
+  return snaps;
+}
+
+async function aiGenerateGgb() {
+  if(!editingVizQid) return;
+  const q = findQ(editingVizQid);
+  if(!q) return;
+  const status = document.getElementById('ggb-ai-status');
+  status.classList.remove('hidden'); status.textContent='AI 正在生成代码…';
+  try {
+    const r = await fetch(`/api/academy/questions/${editingVizQid}/visualizations/generate`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({category:q.category||'function',content:q.content||'',solution:q.solution||''})
+    });
+    const data = await r.json();
+    document.getElementById('ggb-code-input').value = data.code || '';
+    status.textContent='生成完成！点击"预览"查看效果';
+    applyGgbCode();
+  } catch(e){ status.textContent='生成失败：'+e.message; }
+}
+
+async function saveViz() {
+  const code = document.getElementById('ggb-code-input').value;
+  if(!code.trim()||!editingVizQid){showToast('代码为空','warn');return;}
+  const q = findQ(editingVizQid);
+  // 同时更新 JSON
+  await fetch(`/api/academy/exams/${currentExam.id}/questions/${editingVizQid}`,{
+    method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({geogebra_code:code})
+  });
+  // 写入 QuestionVisualization DB
+  await fetch(`/api/academy/questions/${editingVizQid}/visualizations`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      code, exam_id:currentExam.id,
+      viz_type:'geogebra', category:q?.category||'other',
+      title:`Q${q?.number||''} 可视化`, is_primary:true
+    })
+  });
+  if(q) q.geogebra_code = code;
+  document.getElementById(`viz-status-${editingVizQid}`).innerHTML=
+    `<span class="text-green-600">✓ 已保存</span>`;
+  closeGgbModal();
+  showToast('可视化已保存');
+}
+
+async function aiGenerateVizInline(qid, eid) {
+  const q = findQ(qid);
+  if(!q) return;
+  document.getElementById(`viz-status-${qid}`).innerHTML='<span class="text-indigo-500">AI生成中…</span>';
+  try {
+    const r = await fetch(`/api/academy/questions/${qid}/visualizations/generate`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({category:q.category||'function',content:q.content||'',solution:q.solution||''})
+    });
+    const data = await r.json();
+    // 保存
+    await fetch(`/api/academy/exams/${eid}/questions/${qid}`,{
+      method:'PUT',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({geogebra_code:data.code})
+    });
+    q.geogebra_code = data.code;
+    q.viz_snapshots = data.snapshots;
+    document.getElementById(`viz-status-${qid}`).innerHTML=
+      `<span class="text-green-600">✓ 生成完成（${data.snapshots?.length||0} 步）</span>`;
+  } catch(e){
+    document.getElementById(`viz-status-${qid}`).innerHTML='<span class="text-red-500">生成失败</span>';
+  }
+}
+
+// ════════════════════════════════════
+//  AI 解题（单题）
+// ════════════════════════════════════
+async function solveOne(qid, eid) {
+  const q = findQ(qid);
+  if(!q) return;
+  showToast('AI解题中…','info');
+  const r = await fetch(`/api/academy/exams/${eid}/questions/${qid}/solve`,{method:'POST'});
+  if(r.ok){
+    const data=await r.json();
+    document.getElementById(`solution-${qid}`).value=data.solution||'';
+    q.solution=data.solution||'';
+    showToast('解题完成');
+  }
+}
+
+async function vizOne(qid, eid) {
+  showToast('生成可视化…','info');
+  const r = await fetch(`/api/academy/exams/${eid}/questions/${qid}/visualize`,{method:'POST'});
+  if(r.ok){
+    const data=await r.json();
+    const q=findQ(qid);
+    if(q) q.geogebra_code=data.geogebra_code||'';
+    document.getElementById(`viz-status-${qid}`).innerHTML=
+      '<span class="text-green-600">✓ 完成</span>';
+    showToast('可视化生成完成');
+  }
+}
+
+// ════════════════════════════════════
+//  五阶段 Agent 流水线（SSE）
+// ════════════════════════════════════
+const STAGES=['parse','classify','solve','visualize','validate'];
+let agentStep=0;
+
+async function runAgents() {
+  if(!currentExam){showToast('请先选择试卷','warn');return;}
+  agentStep=0;
+  document.getElementById('agent-panel').classList.remove('hidden');
+  document.getElementById('agent-log').innerHTML='';
+  document.getElementById('agent-bar').style.width='0%';
+  document.getElementById('agent-stage').textContent='启动 Agent 流水线…';
+
+  const es = new EventSource(`/api/academy/exams/${currentExam.id}/run-agents`);
+  // 注：POST + SSE 通过 fetch + ReadableStream 实现
+  es.close();
+
+  // 改用 fetch + ReadableStream
+  const resp = await fetch(`/api/academy/exams/${currentExam.id}/run-agents`,{method:'POST'});
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf='';
+  while(true){
+    const {done,value}=await reader.read();
+    if(done) break;
+    buf+=decoder.decode(value,{stream:true});
+    const parts=buf.split('\n\n');
+    buf=parts.pop();
+    for(const part of parts){
+      if(!part.startsWith('data:')) continue;
+      const msg=JSON.parse(part.slice(5).trim());
+      if(msg.error){ appendAgentLog('❌ '+msg.error); break; }
+      if(msg.done){ appendAgentLog('✅ 全部完成！'); agentStep=5; updateAgentBar(); break; }
+      if(msg.message){ appendAgentLog(msg.message); }
+      if(msg.stage){ agentStep=STAGES.indexOf(msg.stage)+1; updateAgentBar(); }
+    }
+  }
+  // 刷新题目列表
+  await selectExam(currentExam.id);
+}
+
+function updateAgentBar(){
+  const pct=Math.round(agentStep/STAGES.length*100);
+  document.getElementById('agent-bar').style.width=pct+'%';
+  document.getElementById('agent-pct').textContent=pct+'%';
+  document.getElementById('agent-stage').textContent=STAGES[agentStep-1]||'完成';
+}
+function appendAgentLog(msg){
+  const el=document.getElementById('agent-log');
+  el.textContent+=msg+'\n';
+  el.scrollTop=el.scrollHeight;
+}
+
+// ════════════════════════════════════
+//  反馈面板
+// ════════════════════════════════════
+let _fbFilter = 'all'; // 当前筛选类型
+
+async function renderFeedback() {
+  const area = document.getElementById('content-area');
+  area.innerHTML = '<div class="text-slate-400 text-center py-8">加载中…</div>';
+  let list;
+  try {
+    const r = await fetch(`/api/academy/teacher/feedback/${currentExam.id}`);
+    list = await r.json();
+  } catch(e) {
+    area.innerHTML = `<div class="text-red-400 text-center py-8">加载失败：${e.message}</div>`;
+    return;
+  }
+
+  const typeMap = {dont_understand:'🤔 不理解', too_hard:'😰 太难了', has_error:'⚠️ 有错误', suggestion:'💡 有建议'};
+  const colorMap = {dont_understand:'#dbeafe', too_hard:'#fee2e2', has_error:'#fef3c7', suggestion:'#d1fae5'};
+  const textColorMap = {dont_understand:'#1d4ed8', too_hard:'#b91c1c', has_error:'#92400e', suggestion:'#065f46'};
+
+  // 按类型统计
+  const stats = {};
+  list.forEach(f => { stats[f.feedback_type] = (stats[f.feedback_type]||0)+1; });
+  const total = list.length;
+  const unresolved = list.filter(f=>!f.resolved).length;
+
+  // 题目索引（同时记录 number，用于友好显示）
+  const qMap = {};
+  (currentExam.questions||[]).forEach((q, idx) => {
+    const key = String(q.id||q.number||'');
+    if(key) qMap[key] = { content: q.content||'', number: q.number || (idx+1) };
+  });
+
+  // 筛选
+  const filtered = _fbFilter === 'all' ? list : list.filter(f => f.feedback_type === _fbFilter);
+
+  // 筛选按钮 HTML
+  const filterBtns = `
+    <div class="flex gap-2 flex-wrap mb-3">
+      <button onclick="_fbFilter='all';renderFeedback()" class="btn btn-sm ${_fbFilter==='all'?'btn-primary':'btn-ghost'}">全部 (${total})</button>
+      ${Object.entries(typeMap).map(([k,v])=>
+        stats[k] ? `<button onclick="_fbFilter='${k}';renderFeedback()" class="btn btn-sm" style="${_fbFilter===k?`background:${colorMap[k]};color:${textColorMap[k]};border-color:${colorMap[k]}`:''}">
+          ${v} <span class="ml-1 font-bold">${stats[k]||0}</span>
+        </button>` : ''
+      ).join('')}
+    </div>`;
+
+  if(!list.length){
+    area.innerHTML = '<div class="text-slate-400 text-center py-20">暂无学生反馈</div>';
+    return;
+  }
+
+  // 统计摘要卡
+  const summaryCard = `
+    <div class="grid gap-3 mb-4" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr))">
+      <div class="bg-white rounded-lg p-3 border text-center">
+        <div class="text-2xl font-bold text-indigo-600">${total}</div>
+        <div class="text-xs text-slate-500 mt-0.5">全部反馈</div>
+      </div>
+      <div class="bg-red-50 rounded-lg p-3 border border-red-100 text-center">
+        <div class="text-2xl font-bold text-red-500">${unresolved}</div>
+        <div class="text-xs text-slate-500 mt-0.5">待处理</div>
+      </div>
+      <div class="bg-blue-50 rounded-lg p-3 border border-blue-100 text-center">
+        <div class="text-2xl font-bold text-blue-600">${stats['dont_understand']||0}</div>
+        <div class="text-xs text-slate-500 mt-0.5">🤔 不理解</div>
+      </div>
+      <div class="bg-red-50 rounded-lg p-3 border border-red-100 text-center">
+        <div class="text-2xl font-bold text-red-400">${stats['too_hard']||0}</div>
+        <div class="text-xs text-slate-500 mt-0.5">😰 太难了</div>
+      </div>
+      <div class="bg-yellow-50 rounded-lg p-3 border border-yellow-100 text-center">
+        <div class="text-2xl font-bold text-yellow-600">${stats['has_error']||0}</div>
+        <div class="text-xs text-slate-500 mt-0.5">⚠️ 有错误</div>
+      </div>
+    </div>`;
+
+  area.innerHTML = `<div>
+    ${summaryCard}
+    ${filterBtns}
+    ${filtered.length === 0 ? '<div class="text-slate-400 text-center py-10">该类型暂无反馈</div>' :
+      `<div class="space-y-2">
+        ${filtered.map(f => {
+          const qInfo = qMap[String(f.question_id||'')] || null;
+          const qPreview = qInfo ? qInfo.content : '';
+          const qNumber  = qInfo ? qInfo.number  : null;
+          const qLabel = f.question_id
+            ? `<span class="text-xs bg-indigo-50 text-indigo-700 rounded px-2 py-0.5 font-semibold">第 ${qNumber ?? '?'} 题</span>${qPreview ? `<span class="text-xs text-slate-500 truncate katex-target" style="max-width:520px">${escHtml(qPreview.slice(0,80))}${qPreview.length>80?'…':''}</span>` : ''}`
+            : `<span class="text-xs text-slate-400">整卷反馈</span>`;
+          return `
+          <div class="feedback-row bg-white rounded-lg p-3 border" style="border-left:3px solid ${colorMap[f.feedback_type]||'#e2e8f0'}">
+            <div class="flex items-center gap-2 w-full flex-wrap">
+              <span class="feedback-type-tag" style="background:${colorMap[f.feedback_type]||'#f1f5f9'};color:${textColorMap[f.feedback_type]||'#374151'}">${typeMap[f.feedback_type]||f.feedback_type}</span>
+              ${qLabel}
+              ${qInfo ? `<button onclick="openQuestionDetail('${f.question_id}');switchTab(document.querySelector('.tab-btn'),'questions')" class="btn btn-ghost btn-sm" title="查看该题">🔍 查看题目</button>` : ''}
+              ${f.resolved
+                ? '<span class="text-xs text-green-600 ml-auto">✓ 已处理</span>'
+                : `<button onclick="resolveFeedback('${f.id}')" class="btn btn-ghost btn-sm ml-auto">标记已解决</button>`}
+            </div>
+            ${f.content ? `<div class="text-sm text-slate-600 mt-1.5 pl-1 katex-target">${escHtml(f.content)}</div>` : ''}
+            ${f.resolved_note ? `<div class="text-xs text-green-600 mt-1 pl-1">处理备注：${escHtml(f.resolved_note)}</div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>`
+    }
+  </div>`;
+  // 渲染 LaTeX
+  if (typeof renderMathIn === 'function') renderMathIn(area);
+}
+
+// ════════════════════════════════════
+//  试卷绘图（2D GeoGebra + 3D Desmos）
+// ════════════════════════════════════
+let geoBoardApp  = null;   // GeoGebra API
+let geoSnapshots = [];     // 快照库
+let _dragSnapIdx = -1;
+let _drawMode    = '2d';   // '2d' | '3d'
+
+// 兼容旧调用
+function showGeoBoard() { showDrawBoard(); }
+
+function showDrawBoard(mode) {
+  if (mode) _drawMode = mode;
+  _allFeedbackView = false;
+  const navFb = document.getElementById('nav-feedback');
+  if (navFb) navFb.classList.remove('bg-indigo-900','text-white');
+  const navGb = document.getElementById('nav-geoboard');
+  if (navGb) navGb.classList.add('bg-indigo-900','text-white');
+
+  const is2d = _drawMode === '2d';
+  const area = document.getElementById('content-area');
+  area.innerHTML = `
+    <div>
+      <!-- 标题行 -->
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h2 class="font-semibold text-lg text-slate-700">🎨 试卷绘图</h2>
+          <p class="text-xs text-slate-400 mt-0.5">创建几何图形并关联到题目，截图后可拖入对应题目卡片</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="boardSnapshot()" class="btn btn-primary btn-sm">📸 截图入库</button>
+          <button onclick="clearBoard()" class="btn btn-ghost btn-sm" style="color:#ef4444">🗑 清空</button>
+        </div>
+      </div>
+
+      <!-- 2D / 3D 切换 -->
+      <div class="flex gap-2 mb-3">
+        <button id="tab-2d" onclick="showDrawBoard('2d')"
+          class="btn btn-sm ${is2d ? 'btn-primary' : 'btn-ghost'}">
+          📐 2D · GeoGebra
+        </button>
+        <button id="tab-3d" onclick="showDrawBoard('3d')"
+          class="btn btn-sm ${!is2d ? 'btn-primary' : 'btn-ghost'}">
+          🧊 3D · GeoGebra
+        </button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 310px;gap:16px;align-items:start">
+        <!-- 左：画板 + 命令输入 + AI -->
+        <div>
+          <!-- 画板容器 -->
+          <div id="board-container" style="width:100%;height:500px;border-radius:10px;overflow:hidden;background:#f8fafc;border:1px solid #e2e8f0;position:relative">
+            <div id="board-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;pointer-events:none">
+              ⏳ 画板加载中…
+            </div>
+          </div>
+
+          <!-- AI 生成面板 -->
+          <div class="mt-3 rounded-xl border" style="border-color:#e0e7ff;background:#f8f7ff">
+            <div class="flex items-center gap-2 px-3 py-2 border-b" style="border-color:#e0e7ff">
+              <span class="text-sm font-semibold text-indigo-700">🤖 AI 生成绘图命令</span>
+              <span class="text-xs text-indigo-400">（描述图形 → 自动写入命令框）</span>
+            </div>
+            <div class="p-3 flex gap-2">
+              <textarea id="ai-draw-prompt" class="edit-area flex-1" style="height:52px;resize:none;min-height:52px;font-size:13px"
+                placeholder="${is2d
+                  ? '例：画一个半径为3的圆，圆内作内接正三角形，并标注各顶点'
+                  : '例：绘制一个单位球面，并在上面画出赤道圆和一条经线'
+                }"></textarea>
+              <button onclick="aiDrawGenerate()" id="ai-draw-btn"
+                class="btn btn-primary btn-sm" style="align-self:flex-end;white-space:nowrap">
+                ✨ 生成
+              </button>
+            </div>
+            <div id="ai-draw-status" class="px-3 pb-2 text-xs" style="display:none"></div>
+          </div>
+
+          <!-- 命令框 -->
+          <div class="mt-3">
+            <div class="flex items-center justify-between mb-1">
+              <div class="text-xs text-slate-500">
+                ${is2d
+                  ? 'GeoGebra 2D 命令（支持步骤注释 <code># 步骤1: 描述</code>）'
+                  : 'GeoGebra 3D 命令（如 <code>Sphere((0,0,0),1)</code>、<code>f(x,y)=sin(x)cos(y)</code>）'
+                }
+              </div>
+              <button onclick="applyBoardCode()" class="btn btn-ghost btn-sm" style="font-size:11px">▶ 应用</button>
+            </div>
+            <textarea id="board-code" class="edit-area" style="height:120px;font-family:monospace;font-size:12px"
+              placeholder="${is2d
+                ? '# 步骤1: 创建三角形\nA=(0,0)\nB=(4,0)\nC=(2,3)\nt=Polygon(A,B,C)'
+                : '# 单位球\nSphere((0,0,0),1)\n# 抛物面\nf(x,y)=x^2+y^2'
+              }"></textarea>
+          </div>
+        </div>
+
+        <!-- 右：快照库 -->
+        <div style="display:flex;flex-direction:column;height:calc(100vh - 220px)">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-semibold text-slate-600">📦 图形快照库
+              <span class="text-xs font-normal text-slate-400">(${geoSnapshots.length} 张)</span>
+            </span>
+            <span class="text-xs text-slate-400">拖入题目卡片关联</span>
+          </div>
+          <div id="geo-snap-gallery" class="flex-1 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 初始化对应画板
+  if (is2d) {
+    _initGeoBoard2D();
+  } else {
+    _initGeoBoard3D();
+  }
+  renderGeoGallery();
+}
+
+// ──────────────── 2D GeoGebra ────────────────
+function _initGeoBoard2D() {
+  const hide = () => { const l = document.getElementById('board-loading'); if(l) l.style.display='none'; };
+  if (typeof GGBApplet === 'undefined') {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.geogebra.org/apps/deployggb.js';
+    s.onload = () => _doInitGeoBoard2D(hide);
+    document.head.appendChild(s);
+  } else {
+    _doInitGeoBoard2D(hide);
+  }
+}
+function _doInitGeoBoard2D(onReady) {
+  const container = document.getElementById('board-container');
+  if (!container) return;
+  const w = container.offsetWidth || 700;
+  const params = {
+    appName: 'classic', width: w, height: 500,
+    showMenuBar: true, showToolBar: true, showAlgebraInput: true,
+    enableLabelDrags: true, enableShiftDragZoom: true, enableRightClick: true,
+    showResetIcon: true, useBrowserForJS: false, allowStyleBar: true,
+    appletOnLoad(api) { geoBoardApp = api; if (onReady) onReady(); }
+  };
+  new GGBApplet(params, 'board-container').inject('board-container');
+}
+
+// ──────────────── 3D GeoGebra ────────────────
+function _initGeoBoard3D() {
+  const hide = () => { const l = document.getElementById('board-loading'); if(l) l.style.display='none'; };
+  if (typeof GGBApplet === 'undefined') {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.geogebra.org/apps/deployggb.js';
+    s.onload = () => _doInitGeoBoard3D(hide);
+    document.head.appendChild(s);
+  } else {
+    _doInitGeoBoard3D(hide);
+  }
+}
+function _doInitGeoBoard3D(onReady) {
+  const container = document.getElementById('board-container');
+  if (!container) return;
+  const w = container.offsetWidth || 700;
+  const params = {
+    appName: '3d', width: w, height: 500,
+    showMenuBar: true, showToolBar: true, showAlgebraInput: true,
+    enableLabelDrags: true, enableShiftDragZoom: true, enableRightClick: true,
+    showResetIcon: true, useBrowserForJS: false, allowStyleBar: true,
+    appletOnLoad(api) { geoBoardApp = api; if (onReady) onReady(); }
+  };
+  new GGBApplet(params, 'board-container').inject('board-container');
+}
+
+// ──────────────── 通用操作 ────────────────
+function applyBoardCode() {
+  if (!geoBoardApp) { showToast('画板正在加载…', 'warn'); return; }
+  const code = document.getElementById('board-code')?.value || '';
+  geoBoardApp.newConstruction();
+  code.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).forEach(cmd => {
+    try { geoBoardApp.evalCommand(cmd); } catch(e) {}
+  });
+  showToast('已应用命令', 'info');
+}
+
+function clearBoard() {
+  if (geoBoardApp) geoBoardApp.newConstruction();
+  const el = document.getElementById('board-code');
+  if (el) el.value = '';
+  showToast('画板已清空');
+}
+
+async function boardSnapshot() {
+  if (!geoBoardApp) { showToast('画板未加载，请稍候再试', 'warn'); return; }
+  const code = document.getElementById('board-code')?.value || '';
+  let imgBase64 = '';
+  try { imgBase64 = geoBoardApp.getPNGBase64(1.5, false, 96, false); } catch(e) {}
+  const label = `${_drawMode === '2d' ? '2D' : '3D'} 图形 ${geoSnapshots.length + 1}`;
+  geoSnapshots.push({ code, imgBase64, label, mode: _drawMode });
+  renderGeoGallery();
+  showToast(`📸 已截图：${label}`);
+}
+
+// ──────────────── AI 生成命令 ────────────────
+async function aiDrawGenerate() {
+  const prompt = document.getElementById('ai-draw-prompt')?.value.trim();
+  if (!prompt) { showToast('请输入绘图描述', 'warn'); return; }
+
+  const btn = document.getElementById('ai-draw-btn');
+  const statusEl = document.getElementById('ai-draw-status');
+  btn.disabled = true;
+  btn.textContent = '生成中…';
+  statusEl.style.display = 'block';
+  statusEl.style.color = '#6366f1';
+  statusEl.textContent = '⏳ AI 正在生成绘图命令…';
+
+  // 获取已有代码作为上下文（可追加）
+  const existing = document.getElementById('board-code')?.value.trim() || '';
+
+  try {
+    const r = await fetch('/api/academy/draw-ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        board_type: _drawMode === '2d' ? 'geogebra' : 'desmos3d',
+        prompt,
+        context: existing,
+      }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || '生成失败');
+
+    // 自动写入命令框
+    const codeEl = document.getElementById('board-code');
+    if (codeEl) codeEl.value = d.commands;
+
+    // 显示说明
+    if (d.explanation) {
+      statusEl.style.color = '#059669';
+      statusEl.innerHTML = `✅ 生成成功<br><span style="color:#64748b">${escHtml(d.explanation.slice(0, 200))}${d.explanation.length > 200 ? '…' : ''}</span>`;
+    } else {
+      statusEl.style.color = '#059669';
+      statusEl.textContent = '✅ 命令已写入，点击「▶ 应用」查看效果';
+    }
+
+    // 自动应用到画板
+    applyBoardCode();
+  } catch(e) {
+    statusEl.style.color = '#ef4444';
+    statusEl.textContent = `❌ ${e.message}`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ 生成';
+  }
+}
+
+// ──────────────── 快照库渲染 & 拖放 ────────────────
+function renderGeoGallery() {
+  const el = document.getElementById('geo-snap-gallery');
+  if (!el) return;
+
+  if (!geoSnapshots.length) {
+    el.innerHTML = `
+      <div class="text-center py-10 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl">
+        <div class="text-3xl mb-2">🎨</div>
+        点击「📸 截图入库」<br>图形将出现在这里
+      </div>`;
+    return;
+  }
+
+  const qOpts = (currentExam?.questions || []).map((q, qi) => {
+    const qid = String(q.id || q.number || qi + 1);
+    const preview = (q.content || '').slice(0, 18);
+    return `<option value="${escHtml(qid)}">第${q.number || qi+1}题${preview ? '：' + escHtml(preview) + '…' : ''}</option>`;
+  }).join('');
+
+  el.innerHTML = geoSnapshots.map((s, i) => `
+    <div class="snap-card" draggable="true"
+      ondragstart="dragGeoSnap(event,${i})"
+      ondragend="this.style.opacity='1'">
+      <div class="flex items-center justify-between mb-1">
+        <span class="snap-badge">${escHtml(s.label)}</span>
+        <button onclick="removeSnap(${i})" class="text-xs text-slate-300 hover:text-red-400">&#x2715;</button>
+      </div>
+      ${s.imgBase64
+        ? `<img class="snap-img" src="data:image/png;base64,${s.imgBase64}" alt="${escHtml(s.label)}">`
+        : `<div style="background:#f1f5f9;height:60px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#94a3b8;margin-bottom:8px">${s.mode === '3d' ? '🧊 3D 图形' : '无预览'}</div>`
+      }
+      <div class="text-xs text-slate-400 mb-2 leading-snug" style="max-height:28px;overflow:hidden">
+        ${s.code ? escHtml(s.code.split('\n').filter(l => !l.startsWith('#') && l.trim()).slice(0,2).join(' · ')) : '(空)'}
+      </div>
+      ${qOpts ? `
+      <div style="display:grid;grid-template-columns:1fr auto;gap:4px;align-items:center">
+        <select id="snap-q-sel-${i}" style="font-size:11px;border:1px solid #e2e8f0;border-radius:5px;padding:3px 5px;width:100%;outline:none">
+          <option value="">— 选择题目 —</option>
+          ${qOpts}
+        </select>
+        <button onclick="applySnapToQ(${i})" class="btn btn-primary btn-sm" style="font-size:11px;padding:4px 8px">✔</button>
+      </div>` : '<div class="text-xs text-slate-400">请先选择试卷</div>'}
+    </div>
+  `).join('');
+}
+
+function removeSnap(idx) {
+  geoSnapshots.splice(idx, 1);
+  renderGeoGallery();
+  showToast('已删除');
+}
+
+function dragGeoSnap(event, idx) {
+  _dragSnapIdx = idx;
+  event.currentTarget.style.opacity = '0.6';
+  event.dataTransfer.effectAllowed = 'copy';
+  event.dataTransfer.setData('text/plain', String(idx));
+}
+
+async function dropGeoOnCard(event, qid) {
+  event.preventDefault();
+  const card = document.getElementById(`qcard-${qid}`);
+  if (card) card.classList.remove('drag-over');
+  const idx = _dragSnapIdx >= 0 ? _dragSnapIdx
+    : parseInt(event.dataTransfer.getData('text/plain') || '-1');
+  _dragSnapIdx = -1;
+  if (idx < 0 || idx >= geoSnapshots.length) return;
+  await _applySnapToQuestion(idx, qid);
+}
+
+async function applySnapToQ(idx) {
+  const sel = document.getElementById(`snap-q-sel-${idx}`);
+  if (!sel?.value) { showToast('请先选择题目', 'warn'); return; }
+  await _applySnapToQuestion(idx, sel.value);
+}
+
+async function _applySnapToQuestion(idx, qid) {
+  if (!currentExam) { showToast('请先选择试卷', 'warn'); return; }
+  const snap = geoSnapshots[idx];
+  if (!snap) return;
+
+  const r = await fetch(`/api/academy/exams/${currentExam.id}/questions/${qid}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ geogebra_code: snap.code })
+  });
+
+  if (r.ok) {
+    const q = (currentExam.questions || []).find(x => String(x.id || x.number) === String(qid));
+    if (q) q.geogebra_code = snap.code;
+    showToast(`✅ 图形已关联到第${qid}题`);
+    const vs = document.getElementById(`viz-status-${qid}`);
+    if (vs) vs.innerHTML = `<span class="text-green-600">✓ 几何图已关联 — 学生可交互查看</span>`;
+    const header = document.getElementById(`qcard-${qid}`)?.querySelector('.q-header');
+    if (header && !header.innerHTML.includes('有图')) {
+      header.insertAdjacentHTML('beforeend', '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">有图</span>');
+    }
+    renderGeoGallery();
+  } else {
+    showToast('✕ 关联失败', 'error');
+  }
+}
+
+// ════════════════════════════════════
+//  反馈操作
+// ════════════════════════════════════
+async function resolveFeedback(fid) {
+  const note = prompt('处理备注（可选，直接确定可留空）');
+  if (note === null) return; // 点取消
+  await fetch(`/api/academy/teacher/feedback/${fid}/resolve`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({note: note || ''})
+  });
+  // 根据当前视图决定刷新哪个面板
+  if (_allFeedbackView) showAllFeedbackView();
+  else renderFeedback();
+}
+
+// ════════════════════════════════════
+//  全局反馈总览（不依赖选中试卷）
+// ════════════════════════════════════
+let _allFeedbackView = false;
+
+async function showAllFeedbackView() {
+  _allFeedbackView = true;
+  // 高亮侧边栏按钮，取消试卷选中样式
+  document.getElementById('nav-feedback').classList.add('bg-indigo-900','text-white');
+
+  const area = document.getElementById('content-area');
+  area.innerHTML = '<div class="text-slate-400 text-center py-10">加载反馈数据…</div>';
+
+  // 使用管理员反馈总览接口
+  let data;
+  try {
+    const r = await fetch('/api/academy/admin/feedback-overview?limit=200');
+    data = await r.json();
+  } catch(e) {
+    area.innerHTML = `<div class="text-red-400 text-center py-10">加载失败：${e.message}</div>`;
+    return;
+  }
+
+  const typeMap = {dont_understand:'🤔 不理解', too_hard:'😰 太难了', has_error:'⚠️ 有错误', suggestion:'💡 有建议'};
+  const colorMap = {dont_understand:'#dbeafe', too_hard:'#fee2e2', has_error:'#fef3c7', suggestion:'#d1fae5'};
+  const textColorMap = {dont_understand:'#1d4ed8', too_hard:'#b91c1c', has_error:'#92400e', suggestion:'#065f46'};
+
+  const items = data.items || [];
+
+  if (!items.length) {
+    area.innerHTML = `
+      <div>
+        <h2 class="font-semibold text-lg text-slate-700 mb-4">💬 学生反馈总览</h2>
+        <div class="bg-white rounded-xl p-12 text-center text-slate-400 shadow-sm">
+          <div class="text-4xl mb-3">📭</div>
+          <div>暂无学生反馈</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const unresolved = items.filter(f => !f.resolved).length;
+  const tc = data.type_count || {};
+
+  area.innerHTML = `
+    <div>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="font-semibold text-lg text-slate-700">💬 学生反馈总览</h2>
+        <button onclick="showAllFeedbackView()" class="btn btn-ghost btn-sm">🔄 刷新</button>
+      </div>
+
+      <!-- 统计卡 -->
+      <div class="grid gap-3 mb-5" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr))">
+        <div class="bg-white rounded-xl p-3 border text-center shadow-sm">
+          <div class="text-2xl font-bold text-indigo-600">${data.total||0}</div>
+          <div class="text-xs text-slate-500 mt-0.5">全部反馈</div>
+        </div>
+        <div class="bg-red-50 rounded-xl p-3 border border-red-100 text-center shadow-sm">
+          <div class="text-2xl font-bold text-red-500">${unresolved}</div>
+          <div class="text-xs text-slate-500 mt-0.5">待处理</div>
+        </div>
+        <div class="bg-blue-50 rounded-xl p-3 border border-blue-100 text-center shadow-sm">
+          <div class="text-2xl font-bold text-blue-600">${tc.dont_understand||0}</div>
+          <div class="text-xs text-slate-500 mt-0.5">🤔 不理解</div>
+        </div>
+        <div class="bg-red-50 rounded-xl p-3 border border-red-100 text-center shadow-sm">
+          <div class="text-2xl font-bold text-red-400">${tc.too_hard||0}</div>
+          <div class="text-xs text-slate-500 mt-0.5">😰 太难了</div>
+        </div>
+        <div class="bg-yellow-50 rounded-xl p-3 border border-yellow-100 text-center shadow-sm">
+          <div class="text-2xl font-bold text-yellow-600">${tc.has_error||0}</div>
+          <div class="text-xs text-slate-500 mt-0.5">⚠️ 有错误</div>
+        </div>
+      </div>
+
+      <!-- 反馈列表 -->
+      <div class="space-y-2">
+        ${items.map(f => `
+          <div class="bg-white rounded-xl p-4 border shadow-sm" style="border-left:4px solid ${colorMap[f.feedback_type]||'#e2e8f0'}">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <span class="feedback-type-tag" style="background:${colorMap[f.feedback_type]||'#f1f5f9'};color:${textColorMap[f.feedback_type]||'#374151'}">${typeMap[f.feedback_type]||f.feedback_type}</span>
+              <span class="text-xs text-indigo-500 font-medium">${escHtml(f.exam_title||'未知试卷')}</span>
+              ${f.question_id ? `<span class="text-xs bg-slate-100 text-slate-500 rounded px-2 py-0.5">第${f.question_id}题${f.question_preview ? '：'+escHtml(f.question_preview.slice(0,35))+(f.question_preview.length>35?'…':'') : ''}</span>` : '<span class="text-xs text-slate-400">整卷</span>'}
+              ${f.resolved
+                ? '<span class="text-xs text-green-600 ml-auto">✓ 已处理</span>'
+                : `<button onclick="resolveFromOverview('${f.id}')" class="btn btn-ghost btn-sm ml-auto" style="font-size:11px">标记已解决</button>`
+              }
+            </div>
+            ${f.content ? `<div class="text-sm text-slate-600 pl-0.5">${escHtml(f.content)}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+async function resolveFromOverview(fid) {
+  const note = prompt('处理备注（可选，直接确定可留空）');
+  if (note === null) return;
+  await fetch(`/api/academy/teacher/feedback/${fid}/resolve`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({note: note || ''})
+  });
+  showAllFeedbackView();
+}
+
+// ════════════════════════════════════
+//  发布配置面板
+// ════════════════════════════════════
+function renderPublishConfig() {
+  const area = document.getElementById('content-area');
+  const exam = currentExam || {};
+  const isPub = !!exam.published;
+  const allow = !!exam.allow_view_answer;
+  const qs = exam.questions || [];
+  const totalQ = qs.length;
+  const openCnt = qs.filter(q => (Object.prototype.hasOwnProperty.call(q,'allow_view_answer') ? q.allow_view_answer : allow)).length;
+  const hasAns = !!(exam.answer_content || exam.answer_filename);
+  const ansName = exam.answer_original_name || exam.answer_filename || '';
+
+  area.innerHTML = `
+    <div class="mx-auto space-y-4 pt-2" style="max-width:1100px;width:100%">
+      <!-- 状态总览 -->
+      <div class="grid grid-cols-3 gap-3">
+        <div class="rounded-xl p-4 border ${isPub?'bg-green-50 border-green-200':'bg-slate-50 border-slate-200'}">
+          <div class="text-xs text-slate-500">发布状态</div>
+          <div class="text-lg font-bold mt-1 ${isPub?'text-green-700':'text-slate-500'}">${isPub?'✓ 已发布':'未发布'}</div>
+          ${isPub && exam.published_at ? `<div class="text-xs text-slate-400 mt-1">${new Date(exam.published_at).toLocaleString('zh-CN')}</div>`:''}
+        </div>
+        <div class="rounded-xl p-4 border ${allow?'bg-emerald-50 border-emerald-200':'bg-amber-50 border-amber-200'}">
+          <div class="text-xs text-slate-500">答案可见性默认</div>
+          <div class="text-lg font-bold mt-1 ${allow?'text-emerald-700':'text-amber-700'}">${allow?'🔓 默认开放':'🔒 默认隐藏'}</div>
+          <div class="text-xs text-slate-500 mt-1">已开放 <b>${openCnt}/${totalQ}</b> 题</div>
+        </div>
+        <div class="rounded-xl p-4 border bg-blue-50 border-blue-200">
+          <div class="text-xs text-slate-500">答案资源</div>
+          <div class="text-lg font-bold mt-1 ${hasAns?'text-blue-700':'text-slate-400'}">${hasAns?'已上传':'未上传'}</div>
+          ${ansName?`<div class="text-xs text-slate-500 mt-1 truncate" title="${escHtml(ansName)}">${escHtml(ansName)}</div>`:''}
+        </div>
+      </div>
+
+      <!-- 步骤卡片：上传答案 -->
+      <div class="bg-white rounded-xl border p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-bold">1</span>
+          <h3 class="font-semibold text-slate-700">上传答案 / 解析（可选）</h3>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">支持 PDF / Word / 图片文件或直接输入纯文本。如果每题已在题目详情里填写了答案/解析，可跳过此步。</p>
+        <div class="grid md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-500 block mb-1">上传文件</label>
+            <div class="drop-zone" onclick="document.getElementById('publish-answer-file').click()">
+              <span id="pub-fname" class="text-sm text-slate-500">${ansName?escHtml(ansName):'点击上传答案文件'}</span>
+            </div>
+            <input type="file" id="publish-answer-file" class="hidden"
+              onchange="document.getElementById('pub-fname').textContent=this.files[0]?.name||'点击上传答案文件'">
+          </div>
+          <div>
+            <label class="text-xs text-slate-500 block mb-1">或直接输入纯文本答案</label>
+            <textarea id="pub-answer-text" class="edit-area" placeholder="例：1.A 2.B 3.C …（留空则不覆盖已上传的答案文件）"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- 步骤卡片：可见性 -->
+      <div class="bg-white rounded-xl border p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-bold">2</span>
+          <h3 class="font-semibold text-slate-700">设置答案可见性</h3>
+        </div>
+        <label class="flex items-start gap-2 text-sm text-slate-700 bg-amber-50 border border-amber-200 rounded-lg p-3 cursor-pointer">
+          <input type="checkbox" id="pub-allow-view" class="w-4 h-4 mt-0.5" ${allow ? 'checked' : ''}>
+          <span>
+            <b>允许学生查看答案 / 解析（默认）</b>
+            <div class="text-xs text-slate-500 mt-1">设置后默认应用到全部题目。你仍可去<a href="javascript:switchTab(document.querySelector('.tab-btn'),'questions')" class="text-indigo-600">题目列表</a>逐题调整 🔓/🔒。</div>
+          </span>
+        </label>
+      </div>
+
+      <!-- 步骤卡片：发布 -->
+      <div class="bg-white rounded-xl border p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-bold">3</span>
+          <h3 class="font-semibold text-slate-700">发布 / 管理</h3>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="submitPublishInline()" class="btn btn-green">📤 ${isPub?'重新发布':'立即发布'}</button>
+          ${hasAns ? `<button onclick="redistributeAnswers()" class="btn btn-ghost" title="重新把答案文本切分到各小题的“参考答案/解析”字段">🪄 重新分发答案到各题</button>`:''}
+          <button onclick="aiFillMissingSolutions()" class="btn btn-ghost" title="对所有「解析」为空的题目调用 AI 生成解题过程">🤖 AI 补全所有缺失解析</button>
+          ${isPub ? `<button onclick="toggleAnswerVisibility(${!allow})" class="btn btn-ghost">${allow ? '🔒 全体隐藏答案' : '🔓 全体开放答案'}</button>` : ''}
+          ${isPub ? `<button onclick="unpublishExam()" class="btn btn-ghost" style="color:#dc2626">↩ 撤销发布</button>` : ''}
+          <button onclick="indexRAG()" class="btn btn-ghost">🔍 RAG索引</button>
+        </div>
+        ${isPub ? `<div class="text-xs text-slate-500 mt-3">重新发布会更新答案文件与默认可见性设置，单题级开关不会被清零。</div>`:''}
+      </div>
+    </div>
+  `;
+}
+
+function openPublishModal(){
+  if(!currentExam){ showToast('请先选择一份试卷','warn'); return; }
+  // 重置一下文件名展示
+  const fnEl = document.getElementById('answer-filename');
+  if(fnEl) fnEl.textContent = '点击上传答案文件';
+  const fi = document.getElementById('answer-file-input'); if(fi) fi.value = '';
+  const at = document.getElementById('answer-text'); if(at) at.value = '';
+  const av = document.getElementById('answer-allow-view');
+  if(av) av.checked = !!currentExam.allow_view_answer;
+  document.getElementById('publish-modal').classList.add('open');
+}
+
+async function submitPublishInline() {
+  if(!currentExam){ showToast('请先选择一份试卷','warn'); return; }
+  // 兼容两套 UI：发布 Modal 和「发布配置」Tab
+  const fileEl =
+    document.getElementById('publish-answer-file') ||
+    document.getElementById('answer-file-input');
+  const textEl =
+    document.getElementById('pub-answer-text') ||
+    document.getElementById('answer-text');
+  const answerFile = fileEl ? fileEl.files[0] : null;
+  const answerText = textEl ? textEl.value : '';
+  const fd = new FormData();
+  if(answerFile) fd.append('answer_file', answerFile);
+  if(answerText) fd.append('answer_content', answerText);
+  // 允许学生查看答案复选框（两套 UI 任取其一）
+  const allowEl = document.getElementById('pub-allow-view') || document.getElementById('answer-allow-view');
+  fd.append('allow_view_answer', allowEl && allowEl.checked ? 'true' : 'false');
+  try{
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/publish`,{method:'POST',body:fd});
+    if(!r.ok){
+      const msg = await r.text().catch(()=>'');
+      showToast('发布失败：' + (msg || r.status), 'error');
+      return;
+    }
+    const resp = await r.json().catch(()=>({}));
+    const dist = resp.answer_distribution;
+    if(dist && dist.distributed > 0){
+      showToast(`✅ 发布成功！已自动把答案分配到 ${dist.distributed} 道题`);
+    } else if (dist && dist.error){
+      showToast('发布成功，但答案分发失败：' + dist.error, 'warn');
+    } else {
+      showToast('发布成功！');
+    }
+    await selectExam(currentExam.id);
+  }catch(e){
+    showToast('发布失败：' + (e?.message || e), 'error');
+  }
+}
+
+async function submitPublish() {
+  await submitPublishInline();
+  closeModal('publish-modal');
+}
+
+async function unpublishExam() {
+  if(!confirm('确认撤销发布？')) return;
+  await fetch(`/api/academy/exams/${currentExam.id}/unpublish`,{method:'POST'});
+  showToast('已撤销发布');
+  await selectExam(currentExam.id);
+}
+
+async function toggleAnswerVisibility(allow) {
+  if(!currentExam){ showToast('请先选择一份试卷','warn'); return; }
+  try{
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/answer-visibility`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ allow: !!allow, apply_to_questions: true })
+    });
+    if(!r.ok){ showToast('切换失败：'+r.status,'error'); return; }
+    showToast(allow ? '✅ 已开放答案给学生查看' : '🔒 已对学生隐藏答案');
+    await selectExam(currentExam.id);
+  }catch(e){
+    showToast('切换失败：'+(e?.message||e),'error');
+  }
+}
+
+async function quickToggleAnswerVisibility(eid, currentlyAllowed) {
+  const next = !currentlyAllowed;
+  try{
+    const r = await fetch(`/api/academy/exams/${eid}/answer-visibility`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ allow: next, apply_to_questions: true })
+    });
+    if(!r.ok){ showToast('切换失败：'+r.status,'error'); return; }
+    showToast(next ? '✅ 已开放答案' : '🔒 已隐藏答案');
+    await loadExams();
+    if(currentExam && currentExam.id === eid){
+      await selectExam(eid);
+    }
+  }catch(e){
+    showToast('切换失败：'+(e?.message||e),'error');
+  }
+}
+
+// 单题答案可见性辅助
+function _qAllowVisible(q){
+  // 与后端逻辑一致：题目级优先，缺省回退试卷级
+  if (q && Object.prototype.hasOwnProperty.call(q, 'allow_view_answer')) return !!q.allow_view_answer;
+  return !!(currentExam && currentExam.allow_view_answer);
+}
+
+// 单题"待重新发布"判定
+function _qPending(q){
+  return !!(q && q.has_pending_changes && currentExam && currentExam.published);
+}
+
+async function republishQuestion(qid){
+  if (!currentExam) return;
+  if (!currentExam.published) { showToast('试卷尚未发布，请先发布整卷','warn'); return; }
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(qid));
+  if (!q) return;
+  const pending = _qPending(q);
+  const tip = pending
+    ? `确认重新发布 第 ${q.number||'?'} 题？\n\n变更字段：${(q.pending_fields||[]).join('、')||'(未知)'}\n版本号将从 v${q.version||1} 升至 v${(q.version||1)+1}。`
+    : `第 ${q.number||'?'} 题没有未发布的修改，仍要重新发布吗？`;
+  if (!confirm(tip)) return;
+  try{
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/questions/${encodeURIComponent(qid)}/republish`,{
+      method:'POST', headers:{'Content-Type':'application/json'}
+    });
+    if (!r.ok) { showToast('重新发布失败：'+(await r.text()),'error'); return; }
+    const d = await r.json();
+    q.published_at = d.published_at;
+    q.version = d.version;
+    q.has_pending_changes = false;
+    q.pending_fields = [];
+    showToast(`✅ 已重新发布第 ${q.number||'?'} 题（v${d.version}）`);
+    if (_detailQid) renderQuestionDetail(q); else renderQuestions();
+  }catch(e){
+    showToast('重新发布失败：'+(e?.message||e),'error');
+  }
+}
+
+async function republishAllPending(){
+  if (!currentExam) return;
+  if (!currentExam.published) { showToast('试卷尚未发布','warn'); return; }
+  const pending = (currentExam.questions||[]).filter(q => q.has_pending_changes);
+  if (!pending.length) { showToast('没有需要重新发布的题目','info'); return; }
+  if (!confirm(`将批量重新发布 ${pending.length} 道有修改的题目。继续？`)) return;
+  try{
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/questions/republish-all`,{method:'POST'});
+    if (!r.ok) { showToast('失败：'+(await r.text()),'error'); return; }
+    const d = await r.json();
+    pending.forEach(q => { q.has_pending_changes = false; q.pending_fields = []; q.version = (q.version||0)+1; q.published_at = new Date().toISOString(); });
+    showToast(`✅ 已重新发布 ${d.republished} 道题`);
+    if (_detailQid) {
+      const cur = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(_detailQid));
+      if (cur) renderQuestionDetail(cur);
+    } else renderQuestions();
+  }catch(e){
+    showToast('批量重发失败：'+(e?.message||e),'error');
+  }
+}
+
+async function toggleQuestionAnswerVisibility(qid){
+  if (!currentExam) return;
+  const q = (currentExam.questions||[]).find(x => String(x.id||x.number) === String(qid));
+  if (!q) return;
+  const next = !_qAllowVisible(q);
+  try{
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/questions/${encodeURIComponent(qid)}/answer-visibility`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ allow: next })
+    });
+    if(!r.ok){ showToast('切换失败：'+r.status,'error'); return; }
+    q.allow_view_answer = next;
+    showToast(next ? `📢 已发布第 ${q.number||'?'} 题答案给学生` : `🔒 已对学生隐藏第 ${q.number||'?'} 题答案`);
+    // 局部刷新当前视图
+    if (_detailQid) renderQuestionDetail(q); else renderQuestions();
+  }catch(e){
+    showToast('切换失败：'+(e?.message||e),'error');
+  }
+}
+
+async function aiFillMissingSolutions() {
+  if(!currentExam){ showToast('请先选择一份试卷','warn'); return; }
+  const missing = (currentExam.questions||[]).filter(q => !(q.solution||'').trim()).length;
+  if(missing === 0){ showToast('所有题目都已有解析，无需补全','info'); return; }
+  if(!confirm(`将对 ${missing} 道缺失解析的题目调用 AI 生成（可能耗时较长）。继续？`)) return;
+  showToast('🤖 AI 解题中…','info');
+  try{
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/solve-missing`,{method:'POST'});
+    if(!r.ok){ showToast('AI 解题失败：'+r.status,'error'); return; }
+    const d = await r.json();
+    showToast(`✅ AI 已补全 ${d.filled||0} 道解析${d.failed?`，${d.failed} 道失败`:''}`);
+    await selectExam(currentExam.id);
+  }catch(e){
+    showToast('AI 解题失败：'+(e?.message||e),'error');
+  }
+}
+
+async function redistributeAnswers() {
+  if(!currentExam){ showToast('请先选择一份试卷','warn'); return; }
+  const overwrite = confirm('是否覆盖已存在的题目答案/解析？\n\n确定 = 覆盖（清空后重新分发）\n取消 = 仅填充空白题目');
+  showToast('🪄 正在切分并分发答案…','info');
+  try{
+    const r = await fetch(`/api/academy/exams/${currentExam.id}/redistribute-answers`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ overwrite })
+    });
+    if(!r.ok){
+      const msg = await r.text().catch(()=>'');
+      showToast('分发失败：' + (msg || r.status),'error');
+      return;
+    }
+    const d = await r.json();
+    showToast(`✅ 分发完成：${d.distributed||0} 道题已写入答案，${d.skipped||0} 道未匹配`);
+    await selectExam(currentExam.id);
+  }catch(e){
+    showToast('分发失败：'+(e?.message||e),'error');
+  }
+}
+
+async function indexRAG() {
+  showToast('RAG索引中…','info');
+  const r = await fetch(`/api/academy/exams/${currentExam.id}/index-rag`,{method:'POST'});
+  const data = await r.json();
+  showToast(`索引完成，共 ${data.indexed_chunks||0} 条`);
+}
+
+// ════════════════════════════════════
+//  上传试卷
+// ════════════════════════════════════
+function openUploadModal() {
+  // 重置状态
+  uploadFile = null;
+  uploadAnswerFile = null;
+  document.getElementById('upload-exam-name').textContent = 'PDF / Word / 图片';
+  document.getElementById('upload-exam-icon').textContent = '📄';
+  document.getElementById('upload-answer-name').textContent = 'AI 自动填充答案';
+  document.getElementById('upload-answer-icon').textContent = '📋';
+  document.getElementById('upload-title').value = '';
+  document.getElementById('upload-progress').classList.add('hidden');
+  document.getElementById('upload-bar').style.width = '0%';
+  document.getElementById('upload-modal').classList.add('open');
+}
+
+function _makeDZ(dzId, onFileFn) {
+  const dz = document.getElementById(dzId);
+  if (!dz) return;
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    const f = e.dataTransfer.files[0];
+    if (f) onFileFn(f);
+  });
+}
+
+function initDropZone() {
+  _makeDZ('upload-drop-exam', f => {
+    uploadFile = f;
+    document.getElementById('upload-exam-name').textContent = f.name;
+    document.getElementById('upload-exam-icon').textContent = '✅';
+  });
+  _makeDZ('upload-drop-answer', f => {
+    uploadAnswerFile = f;
+    document.getElementById('upload-answer-name').textContent = f.name;
+    document.getElementById('upload-answer-icon').textContent = '✅';
+  });
+}
+
+function onExamFileSelected(input) {
+  uploadFile = input.files[0];
+  if (uploadFile) {
+    document.getElementById('upload-exam-name').textContent = uploadFile.name;
+    document.getElementById('upload-exam-icon').textContent = '✅';
+  }
+}
+
+function onAnswerFileSelected(input) {
+  uploadAnswerFile = input.files[0];
+  if (uploadAnswerFile) {
+    document.getElementById('upload-answer-name').textContent = uploadAnswerFile.name;
+    document.getElementById('upload-answer-icon').textContent = '✅';
+  }
+}
+
+// 兼容旧调用（保留）
+function onFileSelected(input) { onExamFileSelected(input); }
+
+async function submitUpload() {
+  if (!uploadFile) { showToast('请先选择试卷文件', 'warn'); return; }
+  const btn = document.getElementById('upload-submit');
+  btn.disabled = true;
+  document.getElementById('upload-progress').classList.remove('hidden');
+  document.getElementById('upload-status').textContent = uploadAnswerFile
+    ? '上传试卷 + 答案解析，AI 解析中…'
+    : '上传并解析中…';
+  document.getElementById('upload-bar').style.width = '20%';
+
+  const fd = new FormData();
+  fd.append('file', uploadFile);
+  const title = document.getElementById('upload-title').value.trim();
+  if (title) fd.append('title', title);
+  if (uploadAnswerFile) fd.append('answer_file', uploadAnswerFile);
+
+  try {
+    document.getElementById('upload-bar').style.width = '50%';
+    const r = await fetch('/api/academy/parse-exam', { method: 'POST', body: fd });
+    document.getElementById('upload-bar').style.width = '100%';
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    showToast(`解析完成：${data.question_count || data.exam?.question_count || 0} 道题`);
+    closeModal('upload-modal');
+    await loadExams();
+    const eid = data.exam_id || data.exam?.id;
+    if (eid) selectExam(eid);
+  } catch (e) {
+    document.getElementById('upload-status').textContent = '失败：' + e.message;
+    showToast('上传失败', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ════════════════════════════════════
+//  工具
+// ════════════════════════════════════
+function findQ(qid) {
+  return (currentExam?.questions||[]).find(q=>
+    String(q.id||'')==qid || String(q.number||'')==qid
+  );
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let _toastTimer=null;
+function showToast(msg,type='success'){
+  let el=document.getElementById('toast');
+  if(!el){el=document.createElement('div');el.id='toast';
+    el.style.cssText='position:fixed;bottom:24px;right:24px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:500;z-index:9999;transition:opacity .3s;box-shadow:0 4px 16px rgba(0,0,0,.15)';
+    document.body.appendChild(el);}
+  const colors={success:'background:#10b981;color:#fff',warn:'background:#f59e0b;color:#fff',error:'background:#ef4444;color:#fff',info:'background:#6366f1;color:#fff'};
+  el.style.cssText+=';'+colors[type];
+  el.textContent=msg; el.style.opacity='1';
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.style.opacity='0',2800);
+}
+</script>
+</body>
+</html>

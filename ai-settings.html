@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 接口配置</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #667eea; --primary2: #764ba2;
+  --bg: #f0f2f8; --card: #fff; --border: #e2e8f0;
+  --text: #1e293b; --muted: #64748b; --danger: #ef4444;
+  --success: #10b981; --warning: #f59e0b;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       background: var(--bg); min-height: 100vh; padding: 24px 16px; color: var(--text); }
+.page { max-width: 780px; margin: 0 auto; }
+.page-hd { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.page-hd h1 { font-size: 20px; font-weight: 800; background: linear-gradient(135deg,var(--primary),var(--primary2));
+              -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.page-hd .back { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px;
+                 background: #fff; font-size: 13px; cursor: pointer; text-decoration: none; color: var(--text); }
+.page-hd .back:hover { background: #f1f5f9; }
+
+.card { background: var(--card); border-radius: 12px; border: 1px solid var(--border);
+        box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 16px; overflow: hidden; }
+.card-hd { padding: 14px 18px 10px; border-bottom: 1px solid var(--border);
+           display: flex; align-items: center; gap: 8px; }
+.card-hd h2 { font-size: 14px; font-weight: 700; flex: 1; }
+.card-hd .badge { font-size: 10px; padding: 2px 7px; border-radius: 99px; font-weight: 700; }
+.badge-active { background: #dcfce7; color: #166534; }
+.badge-inactive { background: #f1f5f9; color: var(--muted); }
+.card-body { padding: 14px 18px; }
+
+/* vendor tabs */
+.vendor-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.vtab { padding: 5px 12px; border-radius: 6px; border: 1.5px solid var(--border);
+        font-size: 12.5px; cursor: pointer; background: #fff; color: var(--muted);
+        transition: all .15s; display: flex; align-items: center; gap: 5px; }
+.vtab:hover { border-color: var(--primary); color: var(--primary); }
+.vtab.active { border-color: var(--primary); background: #ede9fe; color: var(--primary2); font-weight: 700; }
+.vtab .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .6; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group.full { grid-column: 1 / -1; }
+.flabel { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.finput, .fselect {
+  border: 1.5px solid var(--border); border-radius: 7px;
+  padding: 7px 10px; font-size: 13px; font-family: inherit; outline: none;
+  background: #fff; color: var(--text); transition: border-color .15s;
+}
+.finput:focus, .fselect:focus { border-color: var(--primary); }
+.finput.mono { font-family: 'Consolas','Fira Code',monospace; font-size: 12px; }
+.hint { font-size: 11px; color: var(--muted); }
+.hint a { color: var(--primary); text-decoration: none; }
+.hint a:hover { text-decoration: underline; }
+
+.actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.btn { height: 34px; padding: 0 16px; border-radius: 7px; font-size: 13px; font-weight: 700;
+       cursor: pointer; border: none; font-family: inherit; transition: opacity .1s; }
+.btn:hover { opacity: .85; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg,var(--primary),var(--primary2)); color: #fff; }
+.btn-ghost   { background: #f1f5f9; color: var(--text); border: 1px solid var(--border); }
+.btn-danger  { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+.btn-test    { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+.stat-msg { font-size: 12px; min-height: 18px; font-weight: 600; }
+.stat-ok  { color: var(--success); }
+.stat-err { color: var(--danger); }
+.stat-loading { color: var(--primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(102,126,234,.3);
+           border-top-color: var(--primary); border-radius: 50%; animation: spin .7s linear infinite;
+           vertical-align: middle; margin-right: 4px; }
+
+/* active provider card */
+.active-card { background: linear-gradient(135deg,#ede9fe,#f0f2f8);
+               border-color: var(--primary); }
+.active-card .card-hd { background: #ede9fe; }
+
+/* model list */
+.model-grid { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.model-chip { font-size: 11px; padding: 2px 8px; border: 1px solid var(--border);
+              border-radius: 99px; cursor: pointer; color: var(--muted); background: #fff;
+              transition: all .1s; }
+.model-chip:hover { border-color: var(--primary); color: var(--primary); }
+
+/* providers list */
+.prov-list { display: flex; flex-direction: column; gap: 8px; }
+.prov-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+            border: 1.5px solid var(--border); border-radius: 8px; background: #fff; cursor: pointer;
+            transition: border-color .15s; }
+.prov-row:hover { border-color: var(--primary); }
+.prov-row.active { border-color: var(--primary); background: #ede9fe; }
+.prov-icon { font-size: 20px; width: 28px; text-align: center; }
+.prov-info { flex: 1; min-width: 0; }
+.prov-name { font-size: 13px; font-weight: 700; }
+.prov-url  { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prov-stat { font-size: 11px; font-weight: 700; }
+.prov-stat.ok  { color: var(--success); }
+.prov-stat.err { color: var(--danger); }
+
+.section-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase;
+                 letter-spacing: .05em; margin-bottom: 10px; }
+hr.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="page-hd">
+    <a class="back" href="javascript:void(0)" onclick="goBackToBoard()">← 返回画板</a>
+    <h1>🤖 AI 接口配置</h1>
+    <span id="active-badge" style="font-size:12px;font-weight:700;color:var(--success)"></span>
+  </div>
+
+  <!-- 当前激活提供商 -->
+  <div class="card" id="active-card">
+    <div class="card-hd">
+      <h2>当前激活的 AI 提供商</h2>
+      <span id="cur-badge" class="badge badge-inactive">未配置</span>
+    </div>
+    <div class="card-body">
+      <div id="cur-info" style="font-size:13px;color:var(--muted)">请在下方选择并配置一个提供商后激活。</div>
+    </div>
+  </div>
+
+  <!-- 预设厂商 -->
+  <div class="card">
+    <div class="card-hd"><h2>📋 选择预设厂商</h2></div>
+    <div class="card-body">
+      <div class="prov-list" id="prov-list"></div>
+    </div>
+  </div>
+
+  <!-- 编辑配置 -->
+  <div class="card" id="edit-card">
+    <div class="card-hd">
+      <h2 id="edit-title">编辑配置</h2>
+      <span id="edit-badge" class="badge badge-inactive">未激活</span>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label class="flabel">API 接口地址（Base URL）</label>
+          <input class="finput mono" id="f-endpoint" placeholder="https://api.openai.com/v1" />
+          <span class="hint" id="f-endpoint-hint"></span>
+        </div>
+        <div class="form-group full">
+          <label class="flabel">API Key</label>
+          <input class="finput mono" id="f-key" type="password" placeholder="sk-..." autocomplete="off" />
+          <span class="hint">密钥仅存储在本地浏览器 localStorage，不会上传服务器。</span>
+        </div>
+        <div class="form-group full">
+          <label class="flabel">模型名称</label>
+          <input class="finput" id="f-model" placeholder="gpt-4o-mini" />
+          <div class="model-grid" id="model-presets"></div>
+        </div>
+        <div class="form-group full">
+          <label class="flabel">备注（可选）</label>
+          <input class="finput" id="f-note" placeholder="自定义备注" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveAndActivate()">💾 保存并激活</button>
+        <button class="btn btn-test" id="btn-test" onclick="testConnection()">🔌 测试连接</button>
+        <span class="stat-msg" id="test-stat"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自定义厂商 -->
+  <div class="card">
+    <div class="card-hd"><h2>➕ 添加自定义厂商</h2></div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="flabel">厂商名称</label>
+          <input class="finput" id="c-name" placeholder="我的私有部署" />
+        </div>
+        <div class="form-group">
+          <label class="flabel">图标 Emoji</label>
+          <input class="finput" id="c-icon" placeholder="🏠" maxlength="4" />
+        </div>
+        <div class="form-group full">
+          <label class="flabel">Base URL</label>
+          <input class="finput mono" id="c-endpoint" placeholder="http://localhost:11434/v1" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="addCustomProvider()">➕ 添加</button>
+        <span class="stat-msg" id="c-stat"></span>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;font-size:12px;color:var(--muted);padding:16px 0">
+    配置保存在浏览器 localStorage &nbsp;·&nbsp; 切换浏览器或清除数据后需重新配置
+  </div>
+
+</div>
+
+<script>
+'use strict';
+// ── 预设厂商 ─────────────────────────────────────────────
+const BUILTIN = [
+  {
+    id: 'openai', icon: '🌐', name: 'OpenAI',
+    endpoint: 'https://api.openai.com/v1',
+    models: ['gpt-4o','gpt-4o-mini','gpt-4-turbo','gpt-3.5-turbo'],
+    hint: '官方 OpenAI API，需境外网络',
+    keyHint: '格式：sk-...',
+    keyLink: 'https://platform.openai.com/api-keys',
+  },
+  {
+    id: 'deepseek', icon: '🔵', name: 'DeepSeek',
+    endpoint: 'https://api.deepseek.com/v1',
+    models: ['deepseek-chat','deepseek-reasoner','deepseek-coder'],
+    hint: '深度求索，国内可直连',
+    keyHint: '在 platform.deepseek.com 申请',
+    keyLink: 'https://platform.deepseek.com/api_keys',
+  },
+  {
+    id: 'kimi', icon: '🌙', name: 'Kimi (Moonshot)',
+    endpoint: 'https://api.moonshot.cn/v1',
+    models: ['moonshot-v1-8k','moonshot-v1-32k','moonshot-v1-128k'],
+    hint: 'Moonshot AI（Kimi），国内可直连',
+    keyHint: '在 platform.moonshot.cn 申请',
+    keyLink: 'https://platform.moonshot.cn/console/api-keys',
+  },
+  {
+    id: 'qwen', icon: '🟠', name: '通义千问 (Qwen)',
+    endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    models: ['qwen-plus','qwen-turbo','qwen-max','qwen-long'],
+    hint: '阿里云百炼 / DashScope，OpenAI 兼容',
+    keyHint: '在阿里云 DashScope 控制台申请',
+    keyLink: 'https://bailian.console.aliyun.com/',
+  },
+  {
+    id: 'zhipu', icon: '🟣', name: '智谱 GLM',
+    endpoint: 'https://open.bigmodel.cn/api/paas/v4',
+    models: ['glm-4-flash','glm-4-air','glm-4','glm-4-plus'],
+    hint: '清华智谱 AI，国内可直连',
+    keyHint: '在 open.bigmodel.cn 申请',
+    keyLink: 'https://open.bigmodel.cn/usercenter/apikeys',
+  },
+  {
+    id: 'baidu', icon: '🔴', name: '文心一言 (ERNIE)',
+    endpoint: 'https://qianfan.baidubce.com/v2',
+    models: ['ernie-4.5-turbo-128k','ernie-4.0-8k','ernie-lite-8k'],
+    hint: '百度千帆，需先在控制台开通',
+    keyHint: '在百度智能云千帆控制台申请',
+    keyLink: 'https://console.bce.baidu.com/iam/#/iam/apikey/list',
+  },
+  {
+    id: 'ollama', icon: '🦙', name: 'Ollama（本地）',
+    endpoint: 'http://localhost:11434/v1',
+    models: ['llama3','qwen2.5','mistral','gemma3','phi4'],
+    hint: '本地 Ollama 服务，无需 Key',
+    keyHint: '无需 Key，留空即可',
+    keyLink: 'https://ollama.com',
+  },
+  {
+    id: 'lmstudio', icon: '🖥️', name: 'LM Studio（本地）',
+    endpoint: 'http://localhost:1234/v1',
+    models: [],
+    hint: '本地 LM Studio 服务，无需 Key',
+    keyHint: '无需 Key，留空即可',
+    keyLink: 'https://lmstudio.ai',
+  },
+];
+
+// ── 状态 ─────────────────────────────────────────────────
+let providers = [];     // BUILTIN + custom
+let selectedId = null;  // 当前编辑的 provider id
+
+function loadProviders() {
+  const custom = JSON.parse(localStorage.getItem('ai_custom_providers') || '[]');
+  providers = [...BUILTIN, ...custom];
+}
+
+function getActive() {
+  const id = localStorage.getItem('ai_active_id');
+  return providers.find(p => p.id === id) || null;
+}
+
+// ── 渲染 ─────────────────────────────────────────────────
+function render() {
+  loadProviders();
+  renderActiveBadge();
+  renderProvList();
+  if (selectedId) fillEditForm(providers.find(p => p.id === selectedId));
+}
+
+function renderActiveBadge() {
+  const a = getActive();
+  const badge = document.getElementById('cur-badge');
+  const info  = document.getElementById('cur-info');
+  if (!a) {
+    badge.textContent = '未配置'; badge.className = 'badge badge-inactive';
+    info.textContent = '请在下方选择并配置一个提供商后激活。'; info.style.color = 'var(--muted)';
+  } else {
+    badge.textContent = '✓ 已激活'; badge.className = 'badge badge-active';
+    const savedKey = localStorage.getItem(`ai_key_${a.id}`) || '';
+    const savedModel = localStorage.getItem(`ai_model_${a.id}`) || (a.models[0]||'');
+    info.innerHTML = `<b>${a.icon} ${a.name}</b> &nbsp;·&nbsp; ${a.endpoint}<br>
+      <span style="font-size:11px;color:var(--muted)">模型：${savedModel} &nbsp;·&nbsp; Key：${savedKey ? '✓ 已填写' : '❌ 未填写'}</span>`;
+    info.style.color = 'var(--text)';
+  }
+}
+
+function renderProvList() {
+  const list = document.getElementById('prov-list');
+  const activeId = localStorage.getItem('ai_active_id');
+  list.innerHTML = '';
+  providers.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'prov-row' + (p.id === selectedId ? ' active' : '');
+    const savedKey = localStorage.getItem(`ai_key_${p.id}`) || '';
+    const isActive = p.id === activeId;
+    row.innerHTML = `
+      <span class="prov-icon">${p.icon}</span>
+      <div class="prov-info">
+        <div class="prov-name">${p.name}${isActive ? ' <span style="font-size:10px;background:#dcfce7;color:#166534;padding:1px 6px;border-radius:99px;margin-left:4px">激活中</span>' : ''}</div>
+        <div class="prov-url">${p.endpoint}</div>
+      </div>
+      <span class="prov-stat ${savedKey ? 'ok' : ''}">${savedKey ? '✓ 已配置' : '未配置'}</span>
+    `;
+    row.onclick = () => { selectedId = p.id; render(); };
+    list.appendChild(row);
+  });
+}
+
+function fillEditForm(p) {
+  if (!p) return;
+  document.getElementById('edit-title').textContent = `编辑：${p.icon} ${p.name}`;
+  document.getElementById('f-endpoint').value = p.endpoint;
+  document.getElementById('f-endpoint').placeholder = p.endpoint;
+  document.getElementById('f-key').value = localStorage.getItem(`ai_key_${p.id}`) || '';
+  document.getElementById('f-model').value = localStorage.getItem(`ai_model_${p.id}`) || (p.models[0]||'');
+  document.getElementById('f-note').value = p.note || '';
+  if (p.keyHint) document.getElementById('f-endpoint-hint').innerHTML =
+    `文档：<a href="${p.keyLink||'#'}" target="_blank">${p.keyHint}</a>`;
+
+  // model presets
+  const mp = document.getElementById('model-presets');
+  mp.innerHTML = '';
+  (p.models||[]).forEach(m => {
+    const c = document.createElement('span');
+    c.className = 'model-chip'; c.textContent = m;
+    c.onclick = () => { document.getElementById('f-model').value = m; };
+    mp.appendChild(c);
+  });
+
+  // active badge
+  const isActive = localStorage.getItem('ai_active_id') === p.id;
+  const eb = document.getElementById('edit-badge');
+  eb.textContent = isActive ? '✓ 激活中' : '未激活';
+  eb.className = 'badge ' + (isActive ? 'badge-active' : 'badge-inactive');
+
+  document.getElementById('test-stat').textContent = '';
+}
+
+// ── 保存并激活 ────────────────────────────────────────────
+function saveAndActivate() {
+  if (!selectedId) { alert('请先选择一个提供商'); return; }
+  const p = providers.find(x => x.id === selectedId);
+  const ep    = document.getElementById('f-endpoint').value.trim() || p.endpoint;
+  const key   = document.getElementById('f-key').value.trim();
+  const model = document.getElementById('f-model').value.trim() || (p.models[0]||'');
+
+  localStorage.setItem(`ai_key_${selectedId}`,   key);
+  localStorage.setItem(`ai_model_${selectedId}`, model);
+  localStorage.setItem(`ai_ep_${selectedId}`,    ep);
+
+  // 激活：写统一 key 供 geometry-board 读取
+  localStorage.setItem('ai_active_id', selectedId);
+  localStorage.setItem('ai_endpoint',  ep);
+  localStorage.setItem('ai_key',       key);
+  localStorage.setItem('ai_model',     model);
+
+  render();
+  const eb = document.getElementById('edit-badge');
+  eb.textContent = '✓ 已保存并激活，正返回画板…'; eb.className = 'badge badge-active';
+  setTimeout(() => goBackToBoard(), 900);
+}
+
+// ── 测试连接 ──────────────────────────────────────────────
+async function testConnection() {
+  const ep    = document.getElementById('f-endpoint').value.trim();
+  const key   = document.getElementById('f-key').value.trim();
+  const model = document.getElementById('f-model').value.trim();
+  if (!ep)    { setStat('test-stat','请先填写接口地址','err'); return; }
+  if (!model) { setStat('test-stat','请先填写模型名称','err'); return; }
+  const btn = document.getElementById('btn-test');
+  btn.disabled = true;
+  setStat('test-stat','<span class="spinner"></span>连接测试中…','loading');
+  try {
+    const endpoint = ep.replace(/\/+$/, '');
+    const resp = await fetch(`${endpoint}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${key||'none'}` },
+      body: JSON.stringify({
+        model, max_tokens: 5, temperature: 0,
+        messages: [{ role:'user', content:'hi' }],
+      }),
+    });
+    if (resp.ok || resp.status === 400) {
+      setStat('test-stat','✅ 连接成功！接口可用','ok');
+    } else {
+      const e = await resp.json().catch(()=>({}));
+      throw new Error(e?.error?.message || `HTTP ${resp.status}`);
+    }
+  } catch(e) {
+    if (e.message.includes('fetch') || e.message.includes('network')) {
+      setStat('test-stat','❌ 网络错误，请检查地址或跨域设置','err');
+    } else {
+      setStat('test-stat','❌ ' + e.message, 'err');
+    }
+  } finally { btn.disabled = false; }
+}
+
+// ── 添加自定义厂商 ────────────────────────────────────────
+function addCustomProvider() {
+  const name = document.getElementById('c-name').value.trim();
+  const icon = document.getElementById('c-icon').value.trim() || '🔧';
+  const ep   = document.getElementById('c-endpoint').value.trim();
+  if (!name || !ep) { setStat('c-stat','请填写名称和接口地址','err'); return; }
+  const id = 'custom_' + Date.now();
+  const custom = JSON.parse(localStorage.getItem('ai_custom_providers') || '[]');
+  custom.push({ id, icon, name, endpoint: ep, models: [], isCustom: true });
+  localStorage.setItem('ai_custom_providers', JSON.stringify(custom));
+  document.getElementById('c-name').value = '';
+  document.getElementById('c-icon').value = '';
+  document.getElementById('c-endpoint').value = '';
+  setStat('c-stat','✓ 已添加，可在上方列表中选择','ok');
+  selectedId = id; render();
+}
+
+// ── 工具 ─────────────────────────────────────────────────
+function setStat(id, html, cls) {
+  const el = document.getElementById(id);
+  el.innerHTML = html; el.className = 'stat-msg stat-' + cls;
+}
+
+// ── 初始化 ────────────────────────────────────────────────
+render();
+
+// 若从 geometry-board 带参跳转，预选厂商
+const urlPre = new URLSearchParams(location.search).get('select');
+if (urlPre) { selectedId = urlPre; render(); }
+
+function goBackToBoard() {
+  try {
+    if (window.opener && !window.opener.closed) {
+      try { window.opener.loadAIConfig && window.opener.loadAIConfig(); } catch(_){}
+      window.close();
+      setTimeout(() => { if (!window.closed) location.href = '/geometry-board.html'; }, 200);
+    } else {
+      location.href = '/geometry-board.html';
+    }
+  } catch(_) { location.href = '/geometry-board.html'; }
+}
+
+</script>
+</body>
+</html>

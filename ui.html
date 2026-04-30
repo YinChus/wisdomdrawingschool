@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>数学可视化数据集标注系统</title>
+
+<!-- KaTeX for LaTeX rendering -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="window._katexReady=true"></script>
+
+<style>
+  :root {
+    --blue: #3b82f6; --blue-dark: #1e40af;
+    --amber: #f59e0b; --red: #ef4444;
+    --gray: #9ca3af; --green: #22c55e;
+    --bg: #f8fafc; --card: #ffffff;
+    --border: #e2e8f0; --text: #1e293b;
+    --text-muted: #64748b;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+
+  /* ── 布局 ── */
+  .layout { display: flex; height: 100vh; }
+  .sidebar {
+    width: 260px; min-width: 260px; background: var(--blue-dark);
+    color: #fff; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .sidebar-logo { padding: 22px 18px 14px; font-size: 15px; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,.15); }
+  .sidebar-logo small { display: block; font-weight: 400; font-size: 12px; opacity: .7; margin-top: 3px; }
+  .sidebar-stats { padding: 14px 16px; font-size: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .stat-badge { background: rgba(255,255,255,.12); border-radius: 8px; padding: 8px 10px; }
+  .stat-badge span { display: block; font-size: 22px; font-weight: 700; }
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .nav-btn {
+    width: 100%; background: none; border: none; color: rgba(255,255,255,.8);
+    text-align: left; padding: 11px 18px; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; gap: 8px; border-left: 3px solid transparent;
+    transition: all .15s;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .nav-btn.active { background: rgba(255,255,255,.15); color: #fff; border-left-color: var(--amber); }
+  .nav-btn .badge { margin-left: auto; background: var(--amber); color: #000; border-radius: 9999px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+  .sidebar-actions { padding: 14px; border-top: 1px solid rgba(255,255,255,.1); display: flex; flex-direction: column; gap: 8px; }
+  .btn-new { background: var(--amber); color: #000; border: none; border-radius: var(--radius); padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-new:hover { background: #d97706; }
+
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── 顶栏 ── */
+  .topbar {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 14px;
+  }
+  .topbar h2 { font-size: 16px; font-weight: 700; flex: 1; }
+  .filter-row { display: flex; gap: 10px; }
+  select.filter { border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 12px; font-size: 13px; background: var(--bg); }
+
+  /* ── 列表 ── */
+  .list-pane { flex: 1; overflow-y: auto; padding: 14px 18px; }
+  .triplet-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 10px; padding: 14px 16px; cursor: pointer; transition: border-color .15s;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .triplet-card:hover { border-color: var(--blue); }
+  .triplet-card.selected { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(59,130,246,.2); }
+  .card-meta { flex: 1; min-width: 0; }
+  .card-id { font-size: 12px; color: var(--text-muted); font-family: monospace; }
+  .card-preview { font-size: 14px; margin-top: 3px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; }
+  .card-tags { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 2px 9px; border-radius: 9999px; }
+  .tag-cat { background: #dbeafe; color: #1d4ed8; }
+  .tag-2d  { background: #dcfce7; color: #15803d; }
+  .tag-3d  { background: #ede9fe; color: #6d28d9; }
+  .tag-draft    { background: #fee2e2; color: #991b1b; }
+  .tag-annotated{ background: #fef9c3; color: #92400e; }
+  .tag-reviewed { background: #dcfce7; color: #166534; }
+
+  /* ── 详情面板 ── */
+  .detail-pane {
+    width: 720px; min-width: 580px; border-left: 1px solid var(--border);
+    background: var(--card); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .detail-scroll { flex: 1; overflow-y: auto; padding: 20px 22px; }
+  .detail-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .detail-header h3 { font-size: 16px; font-weight: 700; flex: 1; }
+  .detail-footer { border-top: 1px solid var(--border); padding: 14px 18px; display: flex; gap: 8px; }
+
+  /* ── 表单 ── */
+  .form-section { margin-bottom: 18px; }
+  .form-section label { display: block; font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; letter-spacing: .01em; }
+  input[type=text], textarea, select.form-select {
+    width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 9px 12px; font-size: 14px; font-family: inherit; background: var(--bg);
+    transition: border-color .15s;
+  }
+  input[type=text]:focus, textarea:focus, select.form-select:focus { outline: none; border-color: var(--blue); }
+  textarea { resize: vertical; }
+  textarea.code-area { font-family: "Cascadia Code", "Fira Code", monospace; font-size: 12px; min-height: 120px; background: #0f172a; color: #e2e8f0; border-color: #334155; }
+
+  /* ── LaTeX 预览 ── */
+  .latex-preview {
+    display: none; background: #f1f5f9; border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 14px; font-size: 14px; margin-top: 6px; overflow-x: auto;
+  }
+  .latex-preview.visible { display: block; }
+  .preview-toggle {
+    font-size: 12px; color: var(--primary); cursor: pointer; background: none; border: none;
+    padding: 0 0 4px; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .preview-toggle:hover { text-decoration: underline; }
+
+  /* ── 图片区 ── */
+  .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
+  .image-thumb {
+    border: 2px solid var(--border); border-radius: 10px; overflow: hidden;
+    position: relative; aspect-ratio: 4/3; cursor: pointer;
+    transition: all .18s; background: #f8fafc;
+  }
+  .image-thumb:hover { border-color: var(--blue); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(59,130,246,.18); }
+  .image-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .image-thumb .img-label { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff; font-size: 11px; padding: 18px 6px 5px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+  .image-thumb .img-dim { position: absolute; top: 5px; left: 5px; background: rgba(0,0,0,.5); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 9999px; }
+  .image-thumb .img-del { position: absolute; top: 5px; right: 5px; background: var(--red); color: #fff; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; cursor: pointer; display: none; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+  .image-thumb:hover .img-del { display: flex; }
+
+  /* ── 上传区（大版） ── */
+  .upload-zone {
+    border: 2px dashed var(--border); border-radius: 14px;
+    padding: 36px 20px; min-height: 160px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    text-align: center; cursor: pointer; color: var(--text-muted); font-size: 14px;
+    transition: all .2s; margin-top: 10px;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--blue); color: var(--blue);
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    transform: scale(1.01);
+  }
+  .upload-zone .uz-icon { font-size: 42px; line-height: 1; }
+  .upload-zone .uz-main { font-size: 15px; font-weight: 600; }
+  .upload-zone .uz-sub  { font-size: 13px; }
+  .upload-zone .uz-tip  { font-size: 12px; background: rgba(255,255,255,.8); padding: 3px 14px; border-radius: 20px; margin-top: 2px; }
+  .upload-progress { font-size: 13px; color: var(--blue); margin-top: 8px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 8px 14px; }
+
+  /* ── detail-empty 大拖拽区 ── */
+  .detail-empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; transition: all .2s;
+    border: 2px dashed transparent; border-radius: 16px; margin: 20px;
+  }
+  .detail-empty.drop-ready {
+    border-color: var(--blue);
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  }
+  .de-icon  { font-size: 72px; line-height: 1; opacity: .3; }
+  .de-title { font-size: 17px; font-weight: 700; color: var(--text); opacity: .55; }
+  .de-sub   { font-size: 13px; color: var(--text-muted); }
+  .de-tip   { font-size: 12px; background: #f1f5f9; padding: 5px 18px; border-radius: 20px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ── 全页拖拽遮罩 ── */
+  .page-drag-overlay {
+    position: fixed; inset: 0; z-index: 900; pointer-events: none;
+    background: rgba(59,130,246,.05);
+    border: 5px dashed var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity .15s;
+  }
+  .page-drag-overlay.visible { opacity: 1; pointer-events: all; }
+  .page-drag-overlay .pdo-body {
+    background: rgba(255,255,255,.95); border-radius: 20px; padding: 44px 64px;
+    text-align: center; box-shadow: 0 24px 64px rgba(59,130,246,.2);
+    border: 2px solid rgba(59,130,246,.25);
+  }
+
+  /* ── 代码段 ── */
+  .code-block { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; overflow: hidden; }
+  .code-block-header {
+    background: #f1f5f9; padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600;
+  }
+  .code-block-header .engine-badge { font-family: monospace; background: var(--blue); color: #fff; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+  .code-block-body { padding: 8px; }
+  .code-actions { display: flex; gap: 4px; margin-left: auto; }
+
+  /* ── 风格特征 ── */
+  .style-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .style-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .style-item input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--blue); cursor: pointer; }
+  .style-item input[type=number] { width: 70px; }
+
+  /* ── 按钮 ── */
+  .btn { border: none; border-radius: var(--radius); padding: 8px 16px; font-size: 13px; cursor: pointer; font-weight: 500; transition: opacity .15s; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-danger  { background: var(--red);  color: #fff; }
+  .btn-muted   { background: var(--border); color: var(--text); }
+  .btn-sm      { padding: 4px 10px; font-size: 12px; }
+
+  /* ── 导出面板 ── */
+  .export-panel { padding: 20px; }
+  .ratio-row { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .ratio-row label { width: 60px; font-size: 13px; }
+  .ratio-row input[type=range] { flex: 1; accent-color: var(--blue); }
+  .ratio-row span { width: 40px; font-size: 13px; text-align: right; color: var(--text-muted); }
+
+  /* ── 模态框 ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .modal { background: var(--card); border-radius: 12px; padding: 24px; min-width: 380px; max-width: 560px; width: 90%; }
+  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .modal-footer { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+  .hidden { display: none !important; }
+
+  /* ── 代码编辑弹窗（全屏双栏） ── */
+  .code-modal-wide {
+    width: 96vw; max-width: 1400px; height: 90vh;
+    display: flex; flex-direction: column; padding: 0; overflow: hidden;
+  }
+  .code-modal-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    background: #f8fafc; border-radius: 12px 12px 0 0;
+    flex-shrink: 0;
+  }
+  .code-modal-header h3 { font-size: 16px; font-weight: 700; flex: 1; margin: 0; }
+  .code-modal-body {
+    display: flex; flex: 1; overflow: hidden;
+  }
+  .code-editor-col {
+    width: 480px; min-width: 380px; max-width: 520px;
+    display: flex; flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .code-editor-scroll { flex: 1; overflow-y: auto; padding: 16px; }
+  .code-preview-col { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f1f5f9; }
+  .code-preview-tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    background: #f8fafc; padding: 0 16px; flex-shrink: 0;
+  }
+  .preview-tab {
+    padding: 10px 18px; font-size: 13px; cursor: pointer; border: none;
+    background: none; color: var(--text-muted); border-bottom: 2px solid transparent;
+    transition: all .15s;
+  }
+  .preview-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+  .preview-frame-wrap { flex: 1; position: relative; overflow: hidden; }
+  .preview-frame-wrap iframe {
+    width: 100%; height: 100%; border: none;
+  }
+  .preview-placeholder {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px;
+    color: var(--text-muted); font-size: 14px;
+    background: #f8fafc;
+  }
+  .preview-placeholder .ph-icon { font-size: 56px; opacity: .35; }
+
+  /* ── 代码卡片增强 ── */
+  .code-block-preview-thumb {
+    width: 56px; height: 42px; border-radius: 6px; object-fit: cover;
+    border: 1px solid var(--border); margin-right: 6px; vertical-align: middle;
+  }
+  .img-ref-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #ede9fe; color: #6d28d9; border-radius: 9999px;
+    padding: 2px 8px; font-size: 11px; margin: 2px;
+  }
+  .img-ref-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .img-ref-option {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    cursor: pointer; opacity: .55; transition: opacity .15s;
+  }
+  .img-ref-option.checked { opacity: 1; outline: 2px solid var(--blue); border-radius: 8px; }
+  .img-ref-option img { width: 72px; height: 54px; object-fit: cover; border-radius: 6px; }
+  .img-ref-option span { font-size: 10px; color: var(--text-muted); max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── 分隔线 ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .section-title button { margin-left: auto; }
+
+  /* ── 图片全屏预览 ── */
+  .img-preview-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; z-index: 2000; cursor: pointer; }
+  .img-preview-overlay img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+
+  .toast { position: fixed; bottom: 20px; right: 20px; background: #1e293b; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 3000; animation: fadein .2s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- ── 侧边栏 ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      📐 数据集标注系统
+      <small>数学可视化 · LoRA 微调数据</small>
+    </div>
+    <div class="sidebar-stats" id="sidebar-stats">
+      <div class="stat-badge"><span id="stat-total">0</span>总条目</div>
+      <div class="stat-badge"><span id="stat-reviewed">0</span>已审阅</div>
+      <div class="stat-badge"><span id="stat-annotated">0</span>已标注</div>
+      <div class="stat-badge"><span id="stat-draft">0</span>草稿</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <div style="padding:6px 16px;font-size:11px;opacity:.5;text-transform:uppercase;letter-spacing:.05em;">按题型筛选</div>
+    </nav>
+    <div class="sidebar-actions">
+      <button class="btn-new" onclick="openNewModal()">＋ 新增题目</button>
+      <button class="btn btn-muted" style="font-size:12px;padding:8px" onclick="showExport()">📤 导出数据集</button>
+      <button class="btn btn-muted" style="font-size:12px;padding:8px;margin-top:2px" onclick="openGeoBoard()">📐 几何画板</button>
+      <button class="btn btn-muted" style="font-size:12px;padding:8px;margin-top:2px;background:#4f46e5;color:#fff;" onclick="window.open('/academy-login.html','_blank')">🎨 智绘书院</button>
+    </div>
+  </aside>
+
+  <!-- ── 主区域 ── -->
+  <main class="main">
+    <div class="topbar">
+      <h2 id="view-title">全部题目</h2>
+      <div class="filter-row">
+        <select class="filter" id="filter-status" onchange="applyFilter()">
+          <option value="">全部状态</option>
+          <option value="draft">草稿</option>
+          <option value="annotated">已标注</option>
+          <option value="reviewed">已审阅</option>
+        </select>
+        <select class="filter" id="filter-category" onchange="applyFilter()">
+          <option value="">全部题型</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex;flex:1;overflow:hidden">
+      <!-- 列表 -->
+      <div class="list-pane" id="list-pane">
+        <div style="color:var(--text-muted);font-size:13px;padding:20px;text-align:center">加载中...</div>
+      </div>
+
+      <!-- 详情 -->
+      <div class="detail-pane" id="detail-pane">
+        <div class="detail-empty" id="detail-empty">
+          <div class="de-icon">📋</div>
+          <div class="de-title">点击左侧题目查看详情</div>
+          <div class="de-sub">或直接拖拽 / 粘贴图片，自动新建题目并上传</div>
+          <div class="de-tip">📷 拖拽图片 · Ctrl+V 粘贴 · 批量支持</div>
+        </div>
+        <div id="detail-content" class="hidden" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+          <div class="detail-scroll" id="detail-scroll"></div>
+          <div class="detail-footer" id="detail-footer"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── 新增题目弹窗 ── -->
+<div class="modal-overlay hidden" id="new-modal">
+  <div class="modal">
+    <h3>新增题目</h3>
+    <div class="form-section">
+      <label>题型</label>
+      <select class="form-select" id="new-category"></select>
+    </div>
+    <div class="form-section">
+      <label>题目文本（可含 LaTeX，用 $...$ 或 $$...$$）</label>
+      <textarea id="new-question-latex" rows="4" placeholder="例：已知椭圆方程 $\frac{x^2}{4}+y^2=1$，求焦点坐标。" oninput="previewNewLatex()"></textarea>
+      <div class="latex-preview" id="new-latex-preview"></div>
+    </div>
+    <div class="form-section">
+      <label>标注人</label>
+      <input type="text" id="new-annotator" placeholder="你的名字" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-muted" onclick="closeNewModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitNew()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 添加/编辑代码弹窗（全屏双栏） ── -->
+<div class="modal-overlay hidden" id="code-modal">
+  <div class="modal code-modal-wide">
+    <!-- 头部 -->
+    <div class="code-modal-header">
+      <h3 id="code-modal-title">添加可视化代码</h3>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="font-size:13px;font-weight:600;color:var(--text-muted)">引擎</label>
+        <select class="form-select" id="cm-engine" style="width:140px" onchange="onEngineChange()">
+          <option value="geogebra">GeoGebra 2D/3D</option>
+          <option value="desmos3d">Desmos 3D</option>
+          <option value="desmos2d">Desmos 2D</option>
+          <option value="threejs">Three.js</option>
+          <option value="tikz">TikZ (LaTeX)</option>
+        </select>
+        <label style="font-size:13px;font-weight:600;color:var(--text-muted)">维度</label>
+        <select class="form-select" id="cm-dim" style="width:90px">
+          <option value="2d">2D</option>
+          <option value="3d">3D</option>
+        </select>
+        <label style="font-size:13px;font-weight:600;color:var(--text-muted)">规范化</label>
+        <select class="form-select" id="cm-normalized" style="width:80px">
+          <option value="false">否</option>
+          <option value="true">是</option>
+        </select>
+      </div>
+      <button class="btn btn-muted btn-sm" onclick="closeCodeModal()" style="margin-left:8px">✕ 关闭</button>
+    </div>
+
+    <!-- 主体双栏 -->
+    <div class="code-modal-body">
+      <!-- 左栏：编辑 -->
+      <div class="code-editor-col">
+        <div class="code-editor-scroll">
+          <div class="form-section">
+            <label>描述（可选）</label>
+            <input type="text" id="cm-desc" placeholder="如：椭圆标准位置，显示两焦点" />
+          </div>
+          <div class="form-section" style="margin-bottom:8px">
+            <label style="display:flex;align-items:center;gap:8px">
+              代码
+              <span style="font-weight:400;text-transform:none;font-size:12px;color:var(--text-muted)">— 粘贴后自动渲染预览</span>
+            </label>
+            <textarea class="code-area" id="cm-code" rows="20"
+              placeholder="• GeoGebra：粘贴 GGB Script（命令列表，每行一条）&#10;• Desmos 3D：粘贴完整 JSON state&#10;• Desmos 2D：粘贴完整 JSON state&#10;• TikZ：直接粘贴 \begin{tikzpicture}…\end{tikzpicture} 代码"
+              oninput="schedulePreview()"></textarea>
+          </div>
+          <div class="form-section">
+            <label>关联图片（可多选）</label>
+            <div class="img-ref-selector" id="cm-img-refs"></div>
+          </div>
+        </div>
+        <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0">
+          <button class="btn btn-muted" onclick="closeCodeModal()">取消</button>
+          <button class="btn btn-primary" onclick="submitCode()">💾 保存代码</button>
+        </div>
+      </div>
+
+      <!-- 右栏：预览 -->
+      <div class="code-preview-col">
+        <div class="code-preview-tabs" id="preview-tabs">
+          <button class="preview-tab active" id="tab-render" onclick="switchPreviewTab('render')">📐 渲染预览</button>
+          <button class="preview-tab" id="tab-raw" onclick="switchPreviewTab('raw')">📄 原始代码</button>
+        </div>
+        <div class="preview-frame-wrap" id="preview-frame-wrap">
+          <div class="preview-placeholder" id="preview-placeholder">
+            <div class="ph-icon">📐</div>
+            <div>在左侧粘贴代码，自动渲染预览</div>
+            <div style="font-size:12px">支持 GeoGebra · Desmos 3D · Desmos 2D · TikZ</div>
+          </div>
+          <iframe id="preview-iframe" style="display:none"></iframe>
+          <pre id="preview-raw" style="display:none;margin:0;padding:16px;font-size:12px;overflow:auto;height:100%;background:#0f172a;color:#e2e8f0;font-family:'Cascadia Code',monospace;white-space:pre-wrap;word-break:break-all"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 导出面板 ── -->
+<div class="modal-overlay hidden" id="export-modal">
+  <div class="modal">
+    <h3>导出训练数据集</h3>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">仅导出状态为「已标注」或「已审阅」的条目</p>
+    <div class="ratio-row">
+      <label>训练集</label>
+      <input type="range" id="r-train" min="50" max="95" value="80" oninput="syncRatio('train')">
+      <span id="r-train-v">80%</span>
+    </div>
+    <div class="ratio-row">
+      <label>验证集</label>
+      <input type="range" id="r-val" min="0" max="40" value="10" oninput="syncRatio('val')">
+      <span id="r-val-v">10%</span>
+    </div>
+    <div class="ratio-row">
+      <label>测试集</label>
+      <span style="flex:1;font-size:13px;color:var(--text-muted)">（剩余 = 测试集）</span>
+      <span id="r-test-v">10%</span>
+    </div>
+    <div id="export-result" style="display:none;margin-top:12px;background:#f1f5f9;border-radius:8px;padding:12px;font-size:13px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-muted" onclick="closeExport()">关闭</button>
+      <button class="btn btn-primary" onclick="doExport()">执行导出</button>
+    </div>
+  </div>
+</div>
+
+<!-- 全页拖拽遮罩 -->
+<div class="page-drag-overlay" id="page-drag-overlay">
+  <div class="pdo-body">
+    <div style="font-size:76px;line-height:1;margin-bottom:14px">📸</div>
+    <div style="font-size:24px;font-weight:800;color:var(--blue)">松开鼠标上传图片</div>
+    <div id="drag-overlay-hint" style="font-size:14px;color:var(--text-muted);margin-top:10px">将关联到当前选中题目</div>
+  </div>
+</div>
+
+<!-- 全屏图片预览 -->
+<div class="img-preview-overlay hidden" id="img-preview" onclick="this.classList.add('hidden')">
+  <img id="img-preview-src" src="" alt="预览" />
+</div>
+
+<script>
+// ── 常量 ──────────────────────────────────────────────────────
+const API = '';  // 同域
+const CATEGORIES = {
+  solid_geometry: '立体几何', function: '函数', conic_curve: '圆锥曲线',
+  trigonometric: '三角函数', probability: '概率统计', algebra: '代数',
+  vector: '向量', sequence: '数列', other: '其他',
+};
+const STATUS_LABEL = { draft: '草稿', annotated: '已标注', reviewed: '已审阅' };
+
+// ── 状态 ──────────────────────────────────────────────────────
+let triplets = [];
+let stats    = {};
+let selected = null;
+let filterStatus   = '';
+let filterCategory = '';
+let codeModalMode  = 'add'; // 'add' | 'edit'
+let codeEditId     = null;
+
+// ── 初始化 ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  initCategorySelects();
+  loadAll();
+  setInterval(loadAll, 30000);
+  initPageDrag();
+  initPaste();
+});
+
+// ── Ctrl+V 粘贴图片 ──────────────────────────────────────────
+function initPaste() {
+  document.addEventListener('paste', async e => {
+    // 若焦点在文本输入框内，让浏览器默认处理
+    const tag = (document.activeElement?.tagName || '').toUpperCase();
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles = Array.from(items)
+      .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+      .map(item => {
+        const blob = item.getAsFile();
+        if (!blob) return null;
+        // 补充文件名，避免服务端不认识空名文件
+        const ext = item.type.split('/')[1] || 'png';
+        return new File([blob], `paste_${Date.now()}.${ext}`, { type: item.type });
+      })
+      .filter(Boolean);
+
+    if (!imageFiles.length) return;
+    e.preventDefault();
+
+    toast('📋 检测到粘贴图片，正在上传...', 2000);
+    if (!selected) await autoCreateTriplet();
+    if (!selected) { toast('⚠️ 自动建题失败，请手动新增题目'); return; }
+    await uploadImages(imageFiles);
+  });
+}
+
+function initPageDrag() {
+  let dragCounter = 0;
+  const overlay = document.getElementById('page-drag-overlay');
+  const hint    = document.getElementById('drag-overlay-hint');
+  const emptyEl = document.getElementById('detail-empty');
+
+  // 全页拖拽进入
+  document.addEventListener('dragenter', e => {
+    if (!e.dataTransfer?.types?.includes('Files')) return;
+    dragCounter++;
+    hint.textContent = selected ? `将添加到题目 ${selected.id}` : '松开后自动新建题目并上传';
+    overlay.classList.add('visible');
+  });
+  document.addEventListener('dragleave', e => {
+    dragCounter--;
+    if (dragCounter <= 0) { dragCounter = 0; overlay.classList.remove('visible'); }
+  });
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', async e => {
+    e.preventDefault();
+    dragCounter = 0;
+    overlay.classList.remove('visible');
+    const files = e.dataTransfer?.files;
+    if (!files?.length) return;
+    if (!selected) await autoCreateTriplet();
+    uploadImages(files);
+  });
+
+  // detail-empty 专属拖拽高亮
+  if (emptyEl) {
+    emptyEl.addEventListener('dragover',  e => { e.preventDefault(); emptyEl.classList.add('drop-ready'); });
+    emptyEl.addEventListener('dragleave', () => emptyEl.classList.remove('drop-ready'));
+    emptyEl.addEventListener('drop', async e => {
+      e.stopPropagation();
+      emptyEl.classList.remove('drop-ready');
+      const files = e.dataTransfer?.files;
+      if (!files?.length) return;
+      if (!selected) await autoCreateTriplet();
+      uploadImages(files);
+    });
+  }
+}
+
+function initCategorySelects() {
+  const cats = Object.entries(CATEGORIES);
+  // 筛选下拉
+  const fc = document.getElementById('filter-category');
+  cats.forEach(([v, l]) => fc.insertAdjacentHTML('beforeend', `<option value="${v}">${l}</option>`));
+  // 新增弹窗
+  const nc = document.getElementById('new-category');
+  cats.forEach(([v, l]) => nc.insertAdjacentHTML('beforeend', `<option value="${v}">${l}</option>`));
+  // 侧边栏导航
+  const nav = document.getElementById('sidebar-nav');
+  cats.forEach(([v, l]) => {
+    nav.insertAdjacentHTML('beforeend',
+      `<button class="nav-btn" data-cat="${v}" onclick="filterByCat('${v}')">${l}<span class="badge" id="cat-${v}">0</span></button>`);
+  });
+  nav.insertAdjacentHTML('afterbegin',
+    `<button class="nav-btn active" data-cat="" onclick="filterByCat('')">全部题目</button>`);
+}
+
+async function loadAll() {
+  const params = new URLSearchParams();
+  if (filterStatus)   params.set('status', filterStatus);
+  if (filterCategory) params.set('category', filterCategory);
+  const res  = await fetch(`${API}/api/triplets?${params}`);
+  const data = await res.json();
+  triplets = data.triplets;
+  stats    = data.stats;
+  renderStats();
+  renderList();
+  if (selected) {
+    const fresh = triplets.find(t => t.id === selected.id);
+    if (fresh) { selected = fresh; renderDetail(); }
+  }
+}
+
+function renderStats() {
+  document.getElementById('stat-total').textContent    = stats.total    ?? 0;
+  document.getElementById('stat-reviewed').textContent = stats.reviewed ?? 0;
+  document.getElementById('stat-annotated').textContent= stats.annotated?? 0;
+  document.getElementById('stat-draft').textContent    = stats.draft    ?? 0;
+  Object.entries(CATEGORIES).forEach(([v]) => {
+    const el = document.getElementById(`cat-${v}`);
+    if (el) el.textContent = stats.by_category?.[v] ?? 0;
+  });
+}
+
+// ── 列表渲染 ──────────────────────────────────────────────────
+function renderList() {
+  const pane = document.getElementById('list-pane');
+  if (!triplets.length) {
+    pane.innerHTML = `<div style="color:var(--text-muted);font-size:13px;padding:40px;text-align:center">暂无数据，点击左下角「新增题目」开始</div>`;
+    return;
+  }
+  pane.innerHTML = triplets.map(t => {
+    const dimTag = t.dim ? `<span class="tag tag-${t.dim}">${t.dim.toUpperCase()}</span>` : '';
+    const preview = (t.question_text || t.question_latex || '（无题目文本）').replace(/\$[^$]*\$/g, '[LaTeX]').substring(0, 80);
+    return `
+    <div class="triplet-card ${selected?.id===t.id?'selected':''}" onclick="selectTriplet('${t.id}')">
+      <div class="card-meta">
+        <div class="card-id">${t.id} · ${t.annotator||'未署名'} · ${t.updated_at?.substring(0,10)||''}</div>
+        <div class="card-preview">${preview}</div>
+        <div class="card-tags">
+          <span class="tag tag-cat">${CATEGORIES[t.category]||t.category}</span>
+          ${dimTag}
+          <span class="tag tag-${t.annotation_status}">${STATUS_LABEL[t.annotation_status]}</span>
+          <span class="tag" style="background:#f1f5f9;color:var(--text-muted)">${t.images.length}图 ${t.codes.length}代码</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── 详情渲染 ──────────────────────────────────────────────────
+function selectTriplet(id) {
+  selected = triplets.find(t => t.id === id);
+  renderList();
+  renderDetail();
+  // 滚动列表让选中项可见
+  setTimeout(() => {
+    const el = document.querySelector('.triplet-card.selected');
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, 50);
+}
+
+function renderDetail() {
+  if (!selected) return;
+  document.getElementById('detail-empty').classList.add('hidden');
+  const dc = document.getElementById('detail-content');
+  dc.classList.remove('hidden');
+  dc.style.display = 'flex';
+
+  const sf = selected.style_features || {};
+
+  document.getElementById('detail-scroll').innerHTML = `
+    <!-- 基本信息 -->
+    <div class="detail-header">
+      <h3>${selected.id}</h3>
+      <span class="tag tag-${selected.annotation_status}">${STATUS_LABEL[selected.annotation_status]}</span>
+    </div>
+
+    <div class="form-section">
+      <label>题型</label>
+      <select class="form-select" id="d-category" onchange="patchField('category',this.value)">
+        ${Object.entries(CATEGORIES).map(([v,l])=>`<option value="${v}" ${selected.category===v?'selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="form-section">
+      <label>维度（题目整体）</label>
+      <div style="display:flex;gap:8px">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:normal;font-size:14px;cursor:pointer">
+          <input type="radio" name="d-dim" value="2d" ${(selected.dim||'2d')==='2d'?'checked':''} onchange="patchField('dim','2d')" /> 2D
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-weight:normal;font-size:14px;cursor:pointer">
+          <input type="radio" name="d-dim" value="3d" ${selected.dim==='3d'?'checked':''} onchange="patchField('dim','3d')" /> 3D
+        </label>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <label>题目正文（支持 LaTeX）</label>
+      <textarea id="d-latex" rows="8" onblur="patchField('question_latex',this.value);patchField('question_text',this.value)"
+        placeholder="支持 $...$ 行内，$$...$$ 块级 LaTeX，例如：已知 $PA\\perp$ 平面 $ABCD$，$PA=4$">${escapeHtml(selected.question_latex || selected.question_text || '')}</textarea>
+      <button class="preview-toggle" onclick="toggleLatexPreview('d-latex-preview','d-latex')" id="d-latex-toggle">▶ 显示渲染预览</button>
+      <div class="latex-preview" id="d-latex-preview"></div>
+    </div>
+
+    <div class="form-section">
+      <label>题目解析 / 参考答案（支持 LaTeX）</label>
+      <textarea id="d-solution" rows="7" onblur="patchField('solution_latex',this.value);patchField('solution_text',this.value)"
+        placeholder="填写解题过程或参考答案，支持 $...$ LaTeX">${escapeHtml(selected.solution_latex || selected.solution_text || '')}</textarea>
+      <button class="preview-toggle" onclick="toggleLatexPreview('d-solution-preview','d-solution')" id="d-solution-toggle">▶ 显示渲染预览</button>
+      <div class="latex-preview" id="d-solution-preview"></div>
+    </div>
+
+    <div class="form-section">
+      <label>标注人</label>
+      <input type="text" id="d-annotator" value="${escapeHtml(selected.annotator||'')}" onblur="patchField('annotator',this.value)" />
+    </div>
+
+    <div class="form-section">
+      <label>备注</label>
+      <input type="text" id="d-notes" value="${escapeHtml(selected.notes||'')}" onblur="patchField('notes',this.value)" placeholder="可选备注" />
+    </div>
+
+    <hr class="divider" />
+
+    <!-- 图片 -->
+    <div class="section-title">
+      📷 可视化图片（${selected.images.length}）
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="document.getElementById('img-upload-input').click()">批量上传</button>
+    </div>
+    <input type="file" id="img-upload-input" multiple accept="image/*" style="display:none" onchange="uploadImages(this.files)" />
+    <div class="upload-progress hidden" id="upload-progress">上传中...</div>
+    <div class="image-grid" id="image-grid">
+      ${renderImages(selected.images)}
+    </div>
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('img-upload-input').click()">
+      <div class="uz-icon">☁️</div>
+      <div class="uz-main">拖拽图片到此处，或点击选择文件</div>
+      <div class="uz-sub">支持 PNG / JPG / WebP，可一次选择多张</div>
+      <div class="uz-tip">🏷 文件名含 "3d" 自动标记为 3D · 自动命名为 ${selected.id}_xxxx</div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- 代码 -->
+    <div class="section-title">
+      💻 可视化代码（${selected.codes.length}）
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="openCodeModal()">添加代码</button>
+    </div>
+    <div id="code-blocks">${renderCodes(selected.codes)}</div>
+
+    <hr class="divider" />
+
+    <!-- 风格特征 -->
+    <div class="section-title">🎨 风格特征标注</div>
+    <div class="style-grid">
+      <label class="style-item">
+        <input type="checkbox" ${sf.has_axes?'checked':''} onchange="patchStyleFeature('has_axes',this.checked)" />
+        有坐标轴
+      </label>
+      <label class="style-item">
+        <input type="checkbox" ${sf.fill_present?'checked':''} onchange="patchStyleFeature('fill_present',this.checked)" />
+        有填充区域
+      </label>
+      <label class="style-item">
+        标注数量
+        <input type="number" value="${sf.label_count??0}" min="0" style="width:60px" onchange="patchStyleFeature('label_count',+this.value)" />
+      </label>
+      <label class="style-item">
+        线段数量
+        <input type="number" value="${sf.line_count??0}" min="0" style="width:60px" onchange="patchStyleFeature('line_count',+this.value)" />
+      </label>
+      <label class="style-item" style="grid-column:span 2">
+        图形复杂度
+        <select class="form-select" style="width:120px;margin-left:6px" onchange="patchStyleFeature('shape_complexity',this.value)">
+          ${['low','medium','high'].map(v=>`<option value="${v}" ${sf.shape_complexity===v?'selected':''}>${{low:'低',medium:'中',high:'高'}[v]}</option>`).join('')}
+        </select>
+      </label>
+    </div>
+  `;
+
+  // 底部状态按钮
+  document.getElementById('detail-footer').innerHTML = `
+    <button class="btn btn-muted btn-sm" onclick="navTriplet(-1)" title="上一题 (Alt+←)">← 上一题</button>
+    <button class="btn btn-muted btn-sm" onclick="navTriplet(1)" title="下一题 (Alt+→)">下一题 →</button>
+    <span style="flex:1"></span>
+    <button class="btn btn-muted btn-sm" onclick="setStatus('draft')">草稿</button>
+    <button class="btn btn-sm" style="background:#fef9c3;color:#92400e" onclick="setStatus('annotated')">标注完成</button>
+    <button class="btn btn-success btn-sm" onclick="setStatus('reviewed')">✓ 审阅通过</button>
+    <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="deleteTriplet()">删除</button>
+  `;
+
+  // 拖拽上传（detail 内 upload-zone 专属）
+  const zone = document.getElementById('upload-zone');
+  if (zone) {
+    zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation();
+      zone.classList.remove('drag-over');
+      uploadImages(e.dataTransfer.files);
+    });
+  }
+
+  // 监听 textarea 实时预览（仅在预览展开时更新）
+  setTimeout(() => {
+    const ta = document.getElementById('d-latex');
+    if (ta) ta.addEventListener('input', () => {
+      const prev = document.getElementById('d-latex-preview');
+      if (prev && prev.classList.contains('visible')) renderLatex('d-latex-preview', ta.value);
+    });
+    const ts = document.getElementById('d-solution');
+    if (ts) ts.addEventListener('input', () => {
+      const prev = document.getElementById('d-solution-preview');
+      if (prev && prev.classList.contains('visible')) renderLatex('d-solution-preview', ts.value);
+    });
+  }, 0);
+}
+
+function toggleLatexPreview(previewId, textareaId) {
+  const prev = document.getElementById(previewId);
+  const ta   = document.getElementById(textareaId);
+  const btn  = document.querySelector(`[onclick*="${previewId}"]`);
+  if (!prev) return;
+  const opening = !prev.classList.contains('visible');
+  prev.classList.toggle('visible', opening);
+  if (btn) btn.textContent = opening ? '▼ 隐藏渲染预览' : '▶ 显示渲染预览';
+  if (opening && ta) renderLatex(previewId, ta.value);
+}
+
+function renderImages(images) {
+  if (!images.length) return '<div style="color:var(--text-muted);font-size:13px;padding:20px;text-align:center;border:2px dashed var(--border);border-radius:10px;background:#f8fafc">暂无图片，上传后显示在这里</div>';
+  return images.map(img => `
+    <div class="image-thumb" onclick="previewImg('/images/${img.filename}')">
+      <img src="/images/${img.filename}" alt="${escapeHtml(img.name)}" loading="lazy" />
+      <div class="img-label">${escapeHtml(img.name)}</div>
+      <button class="img-del" onclick="event.stopPropagation();deleteImage('${img.id}')">✕</button>
+    </div>
+  `).join('');
+}
+
+function renderCodes(codes) {
+  if (!codes.length) return '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">暂无代码，点击「添加代码」</div>';
+  return codes.map(c => {
+    // 关联图片缩略图
+    const refThumbs = (c.image_refs || []).map(imgId => {
+      const img = (selected?.images || []).find(i => i.id === imgId);
+      if (!img) return '';
+      return `<img class="code-block-preview-thumb" src="/images/${img.filename}" title="${escapeHtml(img.name)}" onclick="previewImg('/images/${img.filename}')" />`;
+    }).join('');
+
+    return `
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="engine-badge">${c.engine}</span>
+        <span class="tag tag-${c.dim}" style="font-size:11px;cursor:pointer" title="点击切换 2D/3D" onclick="event.stopPropagation();toggleCodeDim('${c.id}','${c.dim||'2d'}')">${c.dim?.toUpperCase()} ✎</span>
+        ${c.is_normalized?'<span class="tag" style="background:#dcfce7;color:#166534;font-size:11px">已规范化</span>':''}
+        <span style="flex:1;color:var(--text-muted);font-size:12px;margin-left:4px">${escapeHtml(c.description||'')}</span>
+        <div class="code-actions">
+          <button class="btn btn-muted btn-sm" onclick="openCodeModal('${c.id}')">编辑/预览</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCode('${c.id}')">删除</button>
+        </div>
+      </div>
+      ${refThumbs ? `<div style="padding:6px 10px 2px;display:flex;flex-wrap:wrap;gap:4px;align-items:center"><span style="font-size:11px;color:var(--text-muted)">关联图片：</span>${refThumbs}</div>` : ''}
+      <div class="code-block-body">
+        <pre style="background:#0f172a;color:#e2e8f0;border-radius:6px;padding:10px;font-size:12px;overflow-x:auto;max-height:120px;white-space:pre-wrap;word-break:break-all">${escapeHtml(c.code)}</pre>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── 图片上传 ──────────────────────────────────────────────────
+async function uploadImages(files) {
+  const fileArr = Array.from(files || []);
+  if (!selected || !fileArr.length) return;
+  const prog = document.getElementById('upload-progress');
+  prog.classList.remove('hidden');
+  prog.textContent = `上传中 0/${fileArr.length}...`;
+
+  for (let i = 0; i < fileArr.length; i++) {
+    const file = fileArr[i];
+    const dim = file.name.toLowerCase().includes('3d') ? '3d' : '2d';
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('dim', dim);
+    fd.append('view_angle', '');
+    fd.append('custom_name', '');
+    await fetch(`${API}/api/triplets/${selected.id}/images`, { method: 'POST', body: fd });
+    prog.textContent = `上传中 ${i+1}/${fileArr.length}...`;
+  }
+
+  prog.classList.add('hidden');
+  await loadAll();
+  toast(`✓ 已上传 ${fileArr.length} 张图片`);
+}
+
+async function toggleImgDim(imgId, currentDim) {
+  if (!selected) return;
+  const newDim = currentDim === '3d' ? '2d' : '3d';
+  await fetch(`${API}/api/triplets/${selected.id}/images/${imgId}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dim: newDim }),
+  });
+  await loadAll();
+  toast(`已切换为 ${newDim.toUpperCase()}`);
+}
+
+async function toggleCodeDim(codeId, currentDim) {
+  if (!selected) return;
+  const newDim = currentDim === '3d' ? '2d' : '3d';
+  await fetch(`${API}/api/triplets/${selected.id}/codes/${codeId}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dim: newDim }),
+  });
+  await loadAll();
+  toast(`代码已切换为 ${newDim.toUpperCase()}`);
+}
+
+async function deleteImage(imgId) {
+  if (!confirm('确认删除该图片？')) return;
+  await fetch(`${API}/api/triplets/${selected.id}/images/${imgId}`, { method: 'DELETE' });
+  await loadAll();
+  toast('图片已删除');
+}
+
+function previewImg(url) {
+  document.getElementById('img-preview-src').src = url;
+  document.getElementById('img-preview').classList.remove('hidden');
+}
+
+// ── 代码弹窗 ──────────────────────────────────────────────────
+let previewTimer = null;
+let currentPreviewTab = 'render';
+
+function onEngineChange() {
+  // 引擎改变后重新触发预览
+  schedulePreview();
+}
+
+function switchPreviewTab(tab) {
+  currentPreviewTab = tab;
+  document.getElementById('tab-render').classList.toggle('active', tab === 'render');
+  document.getElementById('tab-raw').classList.toggle('active', tab === 'raw');
+  const iframe = document.getElementById('preview-iframe');
+  const raw    = document.getElementById('preview-raw');
+  const ph     = document.getElementById('preview-placeholder');
+  if (tab === 'raw') {
+    const code = document.getElementById('cm-code').value;
+    raw.textContent = code || '（无代码）';
+    raw.style.display = 'block';
+    iframe.style.display = 'none';
+    ph.style.display = 'none';
+  } else {
+    raw.style.display = 'none';
+    renderPreview();
+  }
+}
+
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    if (currentPreviewTab === 'render') renderPreview();
+    else {
+      const raw = document.getElementById('preview-raw');
+      raw.textContent = document.getElementById('cm-code').value || '（无代码）';
+    }
+  }, 600);
+}
+
+function renderPreview() {
+  const engine = document.getElementById('cm-engine').value;
+  const code   = document.getElementById('cm-code').value.trim();
+  const iframe = document.getElementById('preview-iframe');
+  const ph     = document.getElementById('preview-placeholder');
+
+  if (!code) {
+    iframe.style.display = 'none';
+    ph.style.display     = 'flex';
+    return;
+  }
+
+  ph.style.display     = 'none';
+  iframe.style.display = 'block';
+
+  const dim = document.getElementById('cm-dim')?.value || '2d';
+
+  if (engine === 'geogebra') {
+    renderGeoGebraPreview(code, iframe, dim);
+  } else if (engine === 'desmos3d') {
+    renderDesmosPreview(code, iframe, '3d');
+  } else if (engine === 'desmos2d') {
+    renderDesmosPreview(code, iframe, '2d');
+  } else if (engine === 'tikz') {
+    renderTikzPreview(code, iframe);
+  } else {
+    // Three.js 等直接显示代码
+    ph.style.display = 'flex';
+    ph.querySelector('.ph-icon').textContent = '🔧';
+    ph.querySelector('div:last-child').textContent = 'Three.js 不支持内嵌预览，请复制代码到外部运行';
+    iframe.style.display = 'none';
+  }
+}
+
+function renderTikzPreview(code, iframe) {
+  const ph = document.getElementById('preview-placeholder');
+  ph.style.display = 'flex';
+  ph.querySelector('.ph-icon').textContent = '⏳';
+  ph.querySelector('div:last-child').textContent = '正在渲染 TikZ…';
+  iframe.style.display = 'none';
+
+  fetch((window.API || 'http://localhost:8765') + '/api/render-tikz', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({code})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok && data.url) {
+      // Show result in a simple HTML page inside iframe
+      const cs = '<' + '/script>';
+      const html = '<!DOCTYPE html><html><head>'
+        + '<meta charset="UTF-8"/>'
+        + '<style>body{margin:0;display:flex;justify-content:center;align-items:center;'
+        + 'min-height:100vh;background:#fff;padding:20px;box-sizing:border-box;}'
+        + 'img{max-width:100%;height:auto;}</style>'
+        + '</head><body>'
+        + '<img src="' + data.url + '" alt="TikZ render"/>'
+        + '</body></html>';
+      const blob = new Blob([html], {type: 'text/html'});
+      const blobUrl = URL.createObjectURL(blob);
+      iframe.onload = () => { URL.revokeObjectURL(blobUrl); };
+      iframe.src = blobUrl;
+      iframe.style.display = 'block';
+      ph.style.display = 'none';
+    } else {
+      ph.querySelector('.ph-icon').textContent = '⚠️';
+      ph.querySelector('div:last-child').textContent = 'TikZ 渲染失败：' + (data.error || '未知错误');
+    }
+  })
+  .catch(err => {
+    ph.querySelector('.ph-icon').textContent = '⚠️';
+    ph.querySelector('div:last-child').textContent = '渲染请求失败，请确认服务端正在运行';
+  });
+}
+
+function renderGeoGebraPreview(script, iframe, dim) {
+  // 过滤注释行和空行
+  const commands = script.split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('//') && !l.startsWith('#'));
+  const cmdsJson = JSON.stringify(commands);
+  // classic 支持 2D 和 3D；纯几何用 geometry；3D 立体几何用 3d
+  const appName = (dim === '3d') ? '3d' : 'classic';
+
+  const html = `<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/>
+<script src="https://www.geogebra.org/apps/deployggb.js"><\/script>
+<style>*{margin:0;padding:0} body{overflow:hidden} #ggb-container{width:100vw;height:100vh}</style>
+</head><body>
+<div id="ggb-container"></div>
+<script>
+var ggbParams = {
+  appName: "${appName}",
+  width: window.innerWidth,
+  height: window.innerHeight,
+  showToolBar: false,
+  showAlgebraInput: false,
+  showMenuBar: false,
+  enableRightClick: false,
+  errorDialogsActive: false,
+  appletOnLoad: function() {
+    var api = window.ggbApplet;
+    if (!api) return;
+    var cmds = ${cmdsJson};
+    cmds.forEach(function(cmd) {
+      try { api.evalCommand(cmd); } catch(e) { console.warn('cmd error:', cmd, e); }
+    });
+  }
+};
+var ggbApp = new GGBApplet(ggbParams, true);
+ggbApp.inject('ggb-container');
+<\/script>
+</body></html>`;
+
+  iframe.srcdoc = '';
+  requestAnimationFrame(function() { iframe.srcdoc = html; });
+}
+
+function renderDesmosPreview(stateStr, iframe, mode) {
+  let stateJson = 'null';
+  try {
+    JSON.parse(stateStr);
+    stateJson = stateStr;
+  } catch(e) {
+    // 非 JSON：2D 模式尝试当表达式列表处理，3D 模式提示格式错误
+    if (mode === '2d') {
+      const exprs = stateStr.split('\n').map((l,i) => ({
+        id: String(i), type: 'expression', latex: l.trim()
+      })).filter(e => e.latex);
+      stateJson = JSON.stringify({ version: 9, expressions: { list: exprs } });
+    }
+    // 3D 且非 JSON 时 stateJson 保持 null，界面会显示警告
+  }
+
+  const apiUrl = mode === '3d'
+    ? 'https://www.desmos.com/api/v1.9/calculator3d.js?apiKey=dcb31709b452b1cf9dc26972add0fda6'
+    : 'https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6';
+  const divId = mode === '3d' ? 'desmos-el' : 'desmos-el';
+  const constructor = mode === '3d' ? 'Desmos.Calculator3D' : 'Desmos.GraphingCalculator';
+
+  const html = `<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/>
+<script src="${apiUrl}"><\/script>
+<style>*{margin:0;padding:0} html,body{width:100%;height:100%;overflow:hidden} #desmos-el{width:100%;height:100vh}
+#warn{display:none;position:fixed;inset:0;background:#fff8f0;color:#92400e;font-size:14px;padding:20px;font-family:monospace;white-space:pre-wrap}
+<\/style>
+</head><body>
+<div id="desmos-el"></div>
+<div id="warn"></div>
+<script>
+window.addEventListener('load', function() {
+  var el = document.getElementById('desmos-el');
+  try {
+    var calc = ${constructor}(el, { keypad:false, settingsMenu:false });
+    var state = ${stateJson};
+    if (state !== null) {
+      calc.setState(state);
+    } else {
+      document.getElementById('warn').style.display = 'block';
+      document.getElementById('warn').textContent =
+        '⚠️ Desmos 3D 需要 JSON State 格式\n\n当前代码看起来是 GeoGebra 格式，请切换左上角「引擎」为 GeoGebra 2D/3D';
+    }
+  } catch(err) {
+    document.getElementById('warn').style.display = 'block';
+    document.getElementById('warn').textContent = '⚠️ 渲染错误: ' + err.message;
+  }
+});
+<\/script>
+</body></html>`;
+
+  iframe.srcdoc = '';
+  requestAnimationFrame(function() { iframe.srcdoc = html; });
+}
+
+function buildImgRefSelector(currentRefs) {
+  const container = document.getElementById('cm-img-refs');
+  if (!container) return;
+  const images = selected?.images || [];
+  if (!images.length) {
+    container.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">（当前题目暂无图片）</span>';
+    return;
+  }
+  container.innerHTML = images.map(img => `
+    <div class="img-ref-option ${currentRefs.includes(img.id) ? 'checked' : ''}"
+         data-img-id="${img.id}"
+         onclick="toggleImgRef(this,'${img.id}')">
+      <img src="/images/${img.filename}" alt="${escapeHtml(img.name)}" />
+      <span>${escapeHtml(img.name)}</span>
+    </div>
+  `).join('');
+}
+
+function toggleImgRef(el, imgId) {
+  el.classList.toggle('checked');
+}
+
+function getSelectedImgRefs() {
+  return Array.from(document.querySelectorAll('#cm-img-refs .img-ref-option.checked'))
+    .map(el => el.dataset.imgId);
+}
+
+function openCodeModal(codeId) {
+  codeModalMode = codeId ? 'edit' : 'add';
+  codeEditId    = codeId || null;
+  currentPreviewTab = 'render';
+
+  document.getElementById('code-modal-title').textContent = codeId ? '编辑可视化代码' : '添加可视化代码';
+  document.getElementById('tab-render').classList.add('active');
+  document.getElementById('tab-raw').classList.remove('active');
+  document.getElementById('preview-iframe').style.display = 'none';
+  document.getElementById('preview-raw').style.display    = 'none';
+  document.getElementById('preview-placeholder').style.display = 'flex';
+
+  if (codeId && selected) {
+    const c = selected.codes.find(x => x.id === codeId);
+    if (c) {
+      document.getElementById('cm-engine').value     = c.engine;
+      document.getElementById('cm-dim').value        = c.dim;
+      document.getElementById('cm-normalized').value = String(c.is_normalized);
+      document.getElementById('cm-desc').value       = c.description || '';
+      document.getElementById('cm-code').value       = c.code || '';
+      buildImgRefSelector(c.image_refs || []);
+      // 有代码时自动渲染预览
+      if (c.code?.trim()) setTimeout(renderPreview, 300);
+    }
+  } else {
+    document.getElementById('cm-engine').value     = 'geogebra';
+    document.getElementById('cm-dim').value        = '2d';
+    document.getElementById('cm-normalized').value = 'false';
+    document.getElementById('cm-desc').value       = '';
+    document.getElementById('cm-code').value       = '';
+    buildImgRefSelector([]);
+  }
+
+  document.getElementById('code-modal').classList.remove('hidden');
+}
+
+function closeCodeModal() {
+  document.getElementById('code-modal').classList.add('hidden');
+  // 清空 iframe 防止 GeoGebra/Desmos 继续占用资源
+  const iframe = document.getElementById('preview-iframe');
+  iframe.srcdoc = '';
+  iframe.src    = '';
+}
+
+async function submitCode() {
+  const payload = {
+    engine:        document.getElementById('cm-engine').value,
+    dim:           document.getElementById('cm-dim').value,
+    is_normalized: document.getElementById('cm-normalized').value === 'true',
+    description:   document.getElementById('cm-desc').value.trim(),
+    code:          document.getElementById('cm-code').value,
+    image_refs:    getSelectedImgRefs(),
+  };
+
+  if (!payload.code.trim()) { alert('代码不能为空'); return; }
+
+  if (codeModalMode === 'add') {
+    await fetch(`${API}/api/triplets/${selected.id}/codes`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } else {
+    await fetch(`${API}/api/triplets/${selected.id}/codes/${codeEditId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  closeCodeModal();
+  await loadAll();
+  toast('✓ 代码已保存');
+}
+
+async function deleteCode(codeId) {
+  if (!confirm('确认删除该代码段？')) return;
+  await fetch(`${API}/api/triplets/${selected.id}/codes/${codeId}`, { method: 'DELETE' });
+  await loadAll();
+  toast('代码已删除');
+}
+
+// ── 字段保存 ──────────────────────────────────────────────────
+async function patchField(field, value) {
+  if (!selected) return;
+  await fetch(`${API}/api/triplets/${selected.id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ [field]: value }),
+  });
+  await loadAll();
+}
+
+async function patchStyleFeature(field, value) {
+  if (!selected) return;
+  const sf = { ...(selected.style_features || {}), [field]: value };
+  await fetch(`${API}/api/triplets/${selected.id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ style_features: sf }),
+  });
+  await loadAll();
+}
+
+async function navTriplet(dir) {
+  const idx = selected ? triplets.findIndex(t => t.id === selected.id) : -1;
+  const next = triplets[idx + dir];
+  if (next) {
+    selectTriplet(next.id);
+  } else if (dir > 0) {
+    // 已到末尾，自动新建下一题
+    await autoCreateTriplet();
+  } else {
+    toast('已是第一题');
+  }
+}
+
+// Alt+← / Alt+→ 键盘导航
+document.addEventListener('keydown', e => {
+  if (e.altKey && e.key === 'ArrowLeft')  { e.preventDefault(); navTriplet(-1); }
+  if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); navTriplet(1); }
+});
+
+async function setStatus(status) {
+  await patchField('annotation_status', status);
+  toast(`状态已更新为：${STATUS_LABEL[status]}`);
+}
+
+async function deleteTriplet() {
+  if (!confirm(`确认删除 ${selected.id}？此操作不可撤销。`)) return;
+  await fetch(`${API}/api/triplets/${selected.id}`, { method: 'DELETE' });
+  selected = null;
+  document.getElementById('detail-empty').classList.remove('hidden');
+  document.getElementById('detail-content').classList.add('hidden');
+  await loadAll();
+  toast('已删除');
+}
+
+// ── 新增弹窗 ──────────────────────────────────────────────────
+function openNewModal()  { document.getElementById('new-modal').classList.remove('hidden'); }
+function closeNewModal() { document.getElementById('new-modal').classList.add('hidden'); }
+
+// 静默自动新建题目（拖拽/粘贴时无题目选中）
+async function autoCreateTriplet(defaultCategory = 'solid_geometry') {
+  const res = await fetch(`${API}/api/triplets`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category: defaultCategory, question_latex: '', question_text: '', annotator: '' }),
+  });
+  const data = await res.json();
+  await loadAll();
+  selectTriplet(data.triplet.id);
+  toast(`✨ 已自动创建新题目 ${data.triplet.id}，请填写题目信息`, 3500);
+  return data.triplet;
+}
+
+function previewNewLatex() {
+  renderLatex('new-latex-preview', document.getElementById('new-question-latex').value);
+}
+
+async function submitNew() {
+  const latex    = document.getElementById('new-question-latex').value.trim();
+  const category = document.getElementById('new-category').value;
+  const annotator= document.getElementById('new-annotator').value.trim();
+
+  const res  = await fetch(`${API}/api/triplets`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category, question_latex: latex, question_text: latex, annotator }),
+  });
+  const data = await res.json();
+  closeNewModal();
+  await loadAll();
+  selectTriplet(data.triplet.id);
+  toast(`✓ 新题目 ${data.triplet.id} 已创建`);
+}
+
+// ── 筛选 ──────────────────────────────────────────────────────
+function applyFilter() {
+  filterStatus   = document.getElementById('filter-status').value;
+  filterCategory = document.getElementById('filter-category').value;
+  loadAll();
+}
+
+function filterByCat(cat) {
+  filterCategory = cat;
+  document.getElementById('filter-category').value = cat;
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.nav-btn[data-cat="${cat}"]`)?.classList.add('active');
+  document.getElementById('view-title').textContent = cat ? CATEGORIES[cat] : '全部题目';
+  loadAll();
+}
+
+// ── 导出 ──────────────────────────────────────────────────────
+function showExport()  { document.getElementById('export-modal').classList.remove('hidden'); }
+function openGeoBoard() {
+  const tid = selected ? selected.id : '';
+  window.open('/geometry-board.html' + (tid ? '?tid=' + encodeURIComponent(tid) : ''), '_blank');
+}
+function closeExport() { document.getElementById('export-modal').classList.add('hidden'); }
+
+function syncRatio(type) {
+  const tr = parseInt(document.getElementById('r-train').value);
+  const vr = parseInt(document.getElementById('r-val').value);
+  document.getElementById('r-train-v').textContent = `${tr}%`;
+  document.getElementById('r-val-v').textContent   = `${vr}%`;
+  document.getElementById('r-test-v').textContent  = `${Math.max(0, 100 - tr - vr)}%`;
+}
+
+async function doExport() {
+  const tr = parseInt(document.getElementById('r-train').value) / 100;
+  const vr = parseInt(document.getElementById('r-val').value)   / 100;
+  const res  = await fetch(`${API}/api/export`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ train_ratio: tr, val_ratio: vr, test_ratio: 1 - tr - vr }),
+  });
+  const data = await res.json();
+  const el   = document.getElementById('export-result');
+  el.style.display = 'block';
+  if (data.ok) {
+    const { counts, export_dir } = data;
+    el.innerHTML = `
+      <b>✓ 导出成功</b><br/>
+      存储路径：<code>${export_dir}</code><br/><br/>
+      train.jsonl：${counts.train} 条 &nbsp;
+      val.jsonl：${counts.val} 条 &nbsp;
+      test.jsonl：${counts.test} 条<br/><br/>
+      <a href="/api/export/download/train" target="_blank" style="color:var(--blue)">下载 train.jsonl</a> &nbsp;
+      <a href="/api/export/download/val"   target="_blank" style="color:var(--blue)">下载 val.jsonl</a> &nbsp;
+      <a href="/api/export/download/test"  target="_blank" style="color:var(--blue)">下载 test.jsonl</a>
+    `;
+  } else {
+    el.innerHTML = `<span style="color:var(--red)">导出失败：${data.detail||JSON.stringify(data)}</span>`;
+  }
+}
+
+// ── LaTeX 渲染 ────────────────────────────────────────────────
+function renderLatex(containerId, text) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.textContent = text || '（此处显示 LaTeX 预览）';
+  if (window._katexReady && window.renderMathInElement) {
+    window.renderMathInElement(el, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$',  right: '$',  display: false },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true },
+      ],
+      throwOnError: false,
+    });
+  }
+}
+
+// ── 工具 ──────────────────────────────────────────────────────
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg, duration = 2500) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
+</script>
+</body>
+</html>
